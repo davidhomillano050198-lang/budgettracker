@@ -527,6 +527,7 @@ export function BudgetDashboard({ initialData, sessionEmail, initialPrivacy = fa
   };
   const pay = async (bill: BillItem) => { setPaying(bill.id); const response = await fetch(`/api/bills/${bill.id}/pay`, { method: "POST" }); setPaying(null); if (response.ok) { await refresh(); bumpTx(); setToast(`${bill.name} marked as paid.`); } };
   const logout = async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.reload(); };
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const title = navItems.find((item) => item.id === view)?.label ?? "Overview"; const StatusIcon = statusIcon[data.status];
   const trendCeiling = Math.max(1, ...data.trend.flatMap((point) => [point.income, point.expense]));
   const nextBill = data.bills[0];
@@ -537,7 +538,25 @@ export function BudgetDashboard({ initialData, sessionEmail, initialPrivacy = fa
         <div className="sidebar-top"><Image src="/budgettracker-logo.svg" alt="BudgetTracker" width={220} height={48} priority /><button className="icon-button sidebar-close" onClick={() => setSidebarOpen(false)} title="Close menu"><X size={19} /></button></div>
         <nav>{navItems.map(({ id, label, icon: Icon }) => <button key={id} className={view === id ? "active" : ""} onClick={() => { setView(id); setSidebarOpen(false); }}><Icon size={18} /><span>{label}</span>{view === id && <motion.i layoutId="nav-active" />}</button>)}</nav>
         <button className="primary-button sidebar-add" onClick={openAddTransaction}><Plus size={17} /><span>Add transaction</span></button>
-        <div className="sidebar-bottom"><div className="household-avatar">BT</div><div><strong>{data.householdName}</strong><span>{sessionEmail}</span></div><button className="icon-button" onClick={logout} title="Sign out"><LogOut size={17} /></button></div>
+        <div className="sidebar-bottom">
+          <AnimatePresence>
+            {profileMenuOpen && (
+              <>
+                <button className="profile-menu-overlay" aria-label="Close menu" onClick={() => setProfileMenuOpen(false)} />
+                <motion.div className="profile-menu" role="menu" initial={{ opacity: 0, y: 8, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: .98 }} transition={{ duration: .16 }}>
+                  <div className="profile-menu-head"><div className="household-avatar">{(data.householdName || "BT").slice(0, 2).toUpperCase()}</div><div><strong>{data.householdName}</strong><span>{sessionEmail}</span></div></div>
+                  <button role="menuitem" className="profile-menu-item" onClick={() => { setView("settings"); setProfileMenuOpen(false); setSidebarOpen(false); }}><Settings2 size={16} />Settings</button>
+                  <button role="menuitem" className="profile-menu-item danger" onClick={logout}><LogOut size={16} />Log out</button>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+          <button className="profile-trigger" onClick={() => setProfileMenuOpen((open) => !open)} aria-haspopup="menu" aria-expanded={profileMenuOpen}>
+            <div className="household-avatar">{(data.householdName || "BT").slice(0, 2).toUpperCase()}</div>
+            <div className="profile-trigger-text"><strong>{data.householdName}</strong><span>{sessionEmail}</span></div>
+            <ChevronDown size={16} className={`profile-caret ${profileMenuOpen ? "open" : ""}`} />
+          </button>
+        </div>
       </aside>
       {sidebarOpen && <button className="sidebar-overlay" aria-label="Close navigation" onClick={() => setSidebarOpen(false)} />}
 

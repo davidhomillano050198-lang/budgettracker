@@ -6,7 +6,8 @@ import {
 } from "lucide-react";
 import { CategoryManager } from "@/components/category-manager";
 import { DangerZone } from "@/components/danger-zone";
-import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { createContext, FormEvent, useContext, useEffect, useState, useSyncExternalStore } from "react";
 import { DestructiveActionDialog, UndoToast } from "@/components/destructive-action";
 import { COUNTRIES, countryByCode } from "@/lib/currencies";
 import { currencySymbol, formatCurrency, formatDate, maskedAmount, toBaseAmount, toDisplayAmount } from "@/lib/format";
@@ -48,11 +49,34 @@ const memberColors = [
   "#7C837F",
 ];
 
-function SettingsCard({ icon: Icon, title, subtitle, children }: {
-  icon: typeof UserRound; title: string; subtitle: string; children: React.ReactNode;
+/**
+ * iOS-style settings navigation: the parent holds which section is open
+ * (null = the menu). Each SettingsCard renders as a tappable menu row when
+ * closed, and as the full detail panel (with a back button) when it is the
+ * open section — so the card bodies stay unchanged.
+ */
+const SettingsNav = createContext<{ active: string | null; open: (key: string) => void; close: () => void }>({
+  active: null, open: () => {}, close: () => {},
+});
+
+function SettingsCard({ icon: Icon, title, subtitle, section, tone, children }: {
+  icon: typeof UserRound; title: string; subtitle: string; section: string;
+  tone?: "danger"; children: React.ReactNode;
 }) {
+  const nav = useContext(SettingsNav);
+  if (nav.active === null) {
+    return (
+      <button type="button" className={`settings-row ${tone === "danger" ? "danger" : ""}`} onClick={() => nav.open(section)}>
+        <span className="settings-row-icon"><Icon size={17} /></span>
+        <span className="settings-row-text"><strong>{title}</strong><span>{subtitle}</span></span>
+        <ChevronRight size={18} className="settings-row-chevron" />
+      </button>
+    );
+  }
+  if (nav.active !== section) return null;
   return (
-    <article className="panel settings-card">
+    <article className={`panel settings-card settings-detail ${tone === "danger" ? "danger-card" : ""}`}>
+      <button type="button" className="settings-back" onClick={nav.close}><ChevronLeft size={16} />Settings</button>
       <header className="settings-card-head">
         <span className="settings-card-icon"><Icon size={17} /></span>
         <div><h2>{title}</h2><p>{subtitle}</p></div>
@@ -393,14 +417,17 @@ export function SettingsView({ data, onSaved, amountsHidden = false, onToggleAmo
   }
   const savingsProgress = data.savingsGoal > 0 ? Math.min(100, (data.savingsBalance / data.savingsGoal) * 100) : 0;
 
+  const [section, setSection] = useState<string | null>(null);
+
   return (
+    <SettingsNav.Provider value={{ active: section, open: setSection, close: () => setSection(null) }}>
     <section className="page-section">
       <div className="page-intro">
-        <div><p className="eyebrow">Your household</p><h2>Settings</h2><span>Appearance, profile, budget, protected savings, and sign-in security.</span></div>
+        <div><p className="eyebrow">Your household</p><h2>Settings</h2><span>{section === null ? "Appearance, profile, budget, protected savings, and sign-in security." : "Choose a section, or tap Settings to go back."}</span></div>
       </div>
 
-      <div className="settings-grid">
-        <SettingsCard icon={Sun} title="Appearance" subtitle="Choose how BudgetTracker looks on this device.">
+      <div className={section === null ? "settings-menu" : "settings-detail-wrap"}>
+        <SettingsCard section="appearance" icon={Sun} title="Appearance" subtitle="Theme and balance privacy on this device.">
           <div className="theme-picker" role="radiogroup" aria-label="Theme">
             {themeOptions.map(({ id, label, icon: Icon }) => (
               <button key={id} type="button" role="radio" aria-checked={theme === id} className={theme === id ? "selected" : ""} onClick={() => pickTheme(id)}>
@@ -420,7 +447,7 @@ export function SettingsView({ data, onSaved, amountsHidden = false, onToggleAmo
           )}
         </SettingsCard>
 
-        <SettingsCard icon={UsersRound} title="Household profile" subtitle="Build a useful roster for attribution, planning, and reporting.">
+        <SettingsCard section="profile" icon={UsersRound} title="Household profile" subtitle="Names, members, relationships, and contribution goals.">
           <form onSubmit={submitProfile} className="modal-form settings-form">
             <label><span>Household name</span><input name="householdName" defaultValue={data.householdName} minLength={2} maxLength={60} required /></label>
             <div className="member-editor">
@@ -452,7 +479,7 @@ export function SettingsView({ data, onSaved, amountsHidden = false, onToggleAmo
             <button className="primary-button settings-submit" disabled={profilePending}><span>{profilePending ? "Saving..." : "Save profile"}</span><ArrowRight size={16} /></button>
           </form>
         </SettingsCard>
-        <SettingsCard icon={Wallet} title="Budget & reminders" subtitle="Monthly plan and where bill emails go.">
+        <SettingsCard section="budget" icon={Wallet} title="Budget & reminders" subtitle="Monthly plan, currency, and bill emails.">
           <form onSubmit={submitBudget} className="modal-form settings-form">
             <label><span>Country & currency</span>
               <select value={country} onChange={(event) => setCountry(event.target.value)} aria-label="Country">
@@ -481,7 +508,7 @@ export function SettingsView({ data, onSaved, amountsHidden = false, onToggleAmo
           </form>
         </SettingsCard>
 
-        <SettingsCard icon={PiggyBank} title="Savings vault" subtitle="Track protected savings separately from everyday spending.">
+        <SettingsCard section="savings" icon={PiggyBank} title="Savings vault" subtitle="Track protected savings separately from everyday spending.">
           <div className="savings-vault">
             <div className="savings-vault-total">
               <div><span>Recorded total savings</span><strong>{amountsHidden ? maskedAmount(data.currency) : formatCurrency(data.savingsBalance, data.currency)}</strong><small><LockKeyhole size={11} />Ledger protected</small></div>
@@ -513,11 +540,11 @@ export function SettingsView({ data, onSaved, amountsHidden = false, onToggleAmo
           <div className="settings-note savings-policy"><ShieldCheck size={17} /><div><strong>Your total is calculated, not freely editable.</strong><p>Use Add savings or Withdraw for normal activity. Correct balance is reserved for reconciling a genuine mistake and always leaves an audit record.</p></div></div>
         </SettingsCard>
 
-        <SettingsCard icon={Tags} title="Categories" subtitle="Add, rename, recolor, or remove spending and income categories.">
+        <SettingsCard section="categories" icon={Tags} title="Categories" subtitle="Add, rename, recolor, or remove categories.">
           <CategoryManager categories={data.categories} onSaved={onSaved} />
         </SettingsCard>
 
-        <SettingsCard icon={ShieldCheck} title="Sign-in & security" subtitle="Update the shared credential for your household.">
+        <SettingsCard section="security" icon={ShieldCheck} title="Sign-in & security" subtitle="Login email, password, and allowed accounts.">
           <form onSubmit={submitSecurity} className="modal-form settings-form">
             <div className="current-login"><KeyRound size={15} /><span>Current login: <strong>{security ? security.loginEmail : "loading..."}</strong></span></div>
             <label><span>New login email <small>Optional</small></span><input name="newEmail" type="email" placeholder={security?.loginEmail ?? "you@example.com"} /></label>
@@ -532,7 +559,7 @@ export function SettingsView({ data, onSaved, amountsHidden = false, onToggleAmo
           </form>
         </SettingsCard>
 
-        <SettingsCard icon={AlertTriangle} title="Danger zone" subtitle="Permanently delete this household and all its data.">
+        <SettingsCard section="danger" tone="danger" icon={AlertTriangle} title="Danger zone" subtitle="Permanently delete this household and all its data.">
           <div className="danger-card-body"><DangerZone householdName={data.householdName} /></div>
         </SettingsCard>
       </div>
@@ -568,5 +595,6 @@ export function SettingsView({ data, onSaved, amountsHidden = false, onToggleAmo
         </div>
       )}
     </section>
+    </SettingsNav.Provider>
   );
 }
