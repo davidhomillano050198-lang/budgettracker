@@ -47,3 +47,6 @@ devserver.err.log
 
 # merge artifacts
 *.orig
+
+.vercel
+.env*

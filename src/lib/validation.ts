@@ -5,6 +5,14 @@ export const loginSchema = z.object({
   password: z.string().min(8).max(128),
 });
 
+export const signupSchema = z.object({
+  email: z.string().email().transform((value) => value.trim().toLowerCase()),
+  password: z.string().min(10).max(128)
+    .regex(/[a-zA-Z]/, "Password needs at least one letter")
+    .regex(/[0-9]/, "Password needs at least one number"),
+  householdName: z.string().trim().min(2).max(60).optional(),
+});
+
 export const transactionSchema = z.object({
   type: z.enum(["expense", "income"]),
   amount: z.coerce.number().positive().max(100_000_000),

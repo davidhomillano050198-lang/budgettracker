@@ -47,19 +47,24 @@ export function LoginScreen({ demoMode, providers = [], authError }: {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(authError ? (authErrorCopy[authError] ?? "Sign-in failed. Please try again.") : "");
 
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending(true);
     setError("");
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/auth/login", {
+    const signup = mode === "signup";
+    const response = await fetch(signup ? "/api/auth/signup" : "/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: form.get("email"), password: form.get("password") }),
+      body: JSON.stringify(signup
+        ? { email: form.get("email"), password: form.get("password"), householdName: form.get("householdName") || undefined }
+        : { email: form.get("email"), password: form.get("password") }),
     });
     const result = await response.json();
     if (!response.ok) {
-      setError(result.error ?? "Login failed.");
+      setError(result.error ?? (signup ? "Sign-up failed." : "Login failed."));
       setPending(false);
       return;
     }
@@ -90,9 +95,9 @@ export function LoginScreen({ demoMode, providers = [], authError }: {
       <section className="login-form-panel">
         <motion.div initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, delay: 0.12 }} className="login-form-wrap">
           <div className="login-icon"><LockKeyhole size={22} /></div>
-          <p className="eyebrow">Welcome back</p>
-          <h2>Sign in to your household</h2>
-          <p className="login-subtitle">Use your shared BudgetTracker credential.</p>
+          <p className="eyebrow">{mode === "signup" ? "Get started" : "Welcome back"}</p>
+          <h2>{mode === "signup" ? "Create your household" : "Sign in to your household"}</h2>
+          <p className="login-subtitle">{mode === "signup" ? "Free, private, and ready in seconds." : "Use your shared BudgetTracker credential."}</p>
 
           {providers.length > 0 && (
             <>
@@ -113,14 +118,20 @@ export function LoginScreen({ demoMode, providers = [], authError }: {
               "not configured yet" notice until the OAuth keys are added. */}
 
           <form onSubmit={submit} className="login-form">
+            {mode === "signup" && (
+              <label>
+                <span>Household name <small>Optional</small></span>
+                <input name="householdName" type="text" maxLength={60} placeholder="e.g. The Santos Household" />
+              </label>
+            )}
             <label>
               <span>Email</span>
-              <input name="email" type="email" autoComplete="username" defaultValue={demoMode ? "hello@budgettracker.local" : ""} required />
+              <input name="email" type="email" autoComplete="username" defaultValue={demoMode && mode === "signin" ? "hello@budgettracker.local" : ""} required />
             </label>
             <label>
-              <span>Password</span>
+              <span>Password{mode === "signup" && <small> 10+ characters, letters and numbers</small>}</span>
               <div className="password-field">
-                <input name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" defaultValue={demoMode ? "Together2026!" : ""} required />
+                <input name="password" type={showPassword ? "text" : "password"} minLength={mode === "signup" ? 10 : 8} autoComplete={mode === "signup" ? "new-password" : "current-password"} defaultValue={demoMode && mode === "signin" ? "Together2026!" : ""} required />
                 <button type="button" onClick={() => setShowPassword((value) => !value)} title={showPassword ? "Hide password" : "Show password"}>
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -128,9 +139,12 @@ export function LoginScreen({ demoMode, providers = [], authError }: {
             </label>
             {error && <p className="form-error" role="alert">{error}</p>}
             <button className="primary-button login-submit" type="submit" disabled={pending}>
-              <span>{pending ? "Signing in..." : "Continue"}</span><ArrowRight size={17} />
+              <span>{pending ? (mode === "signup" ? "Creating household..." : "Signing in...") : (mode === "signup" ? "Create household" : "Continue")}</span><ArrowRight size={17} />
             </button>
           </form>
+          <button type="button" className="mode-switch" onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setError(""); }}>
+            {mode === "signin" ? "New here? Create your household — it's free" : "Already have a household? Sign in"}
+          </button>
           <p className="login-device-note">This device stays signed in securely for 30 days.</p>
         </motion.div>
       </section>

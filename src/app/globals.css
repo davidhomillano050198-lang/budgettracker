@@ -75,6 +75,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .login-submit { width: 100%; margin-top: 5px; justify-content: space-between; min-height: 47px; }
 .form-error { margin: -4px 0 0; color: var(--red); font-size: 12px; line-height: 1.4; }
 .login-device-note { margin: 22px 0 0; text-align: center; color: #8b938f; font-size: 11px; }
+.mode-switch { width: 100%; margin-top: 16px; padding: 10px; border: 0; background: transparent; color: var(--green-deep); cursor: pointer; font-size: 12px; font-weight: 650; text-align: center; }
+.mode-switch:hover { text-decoration: underline; }
 
 /* App shell */
 .app-shell { min-height: 100vh; background: var(--canvas); }

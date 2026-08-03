@@ -22,7 +22,7 @@ export default async function Home({ searchParams }: {
       />
     );
   }
-  const data = await getDashboardData();
+  const data = await getDashboardData(session.householdId);
   const store = await cookies();
   const initialPrivacy = store.get("bt_privacy")?.value === "1";
   return <BudgetDashboard initialData={data} sessionEmail={session.email} initialPrivacy={initialPrivacy} />;

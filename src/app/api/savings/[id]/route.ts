@@ -3,9 +3,10 @@ import { getSession } from "@/lib/auth";
 import { reverseSavingsEntry } from "@/lib/db";
 
 export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
-  if (!(await getSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await context.params;
-  const result = await reverseSavingsEntry(id);
+  const result = await reverseSavingsEntry(session.householdId, id);
   if (result === "not_found") {
     return NextResponse.json({ error: "Savings entry not found or already reversed." }, { status: 404 });
   }

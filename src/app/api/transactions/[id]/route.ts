@@ -15,17 +15,19 @@ function respond(result: MutationResult) {
 }
 
 export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
-  if (!(await getSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await context.params;
   const parsed = transactionSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid transaction" }, { status: 400 });
   }
-  return respond(await updateTransaction(id, parsed.data));
+  return respond(await updateTransaction(session.householdId, id, parsed.data));
 }
 
 export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
-  if (!(await getSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await context.params;
-  return respond(await deleteTransaction(id));
+  return respond(await deleteTransaction(session.householdId, id));
 }
