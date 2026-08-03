@@ -502,7 +502,7 @@ export function SettingsView({ data, onSaved, amountsHidden = false, onToggleAmo
               </div>
             </div>
             <label className="amount-input"><span>Monthly household budget <small>in {data.currency}</small></span><div><b>{currencySymbol(data.currency)}</b><input name="monthlyBudget" type="number" min="1" step="any" defaultValue={toDisplayAmount(data.monthlyBudget)} required /></div></label>
-            <label><span>Bill reminder email</span><input name="reminderEmail" type="email" defaultValue={data.reminderEmail} required /></label>
+            <label><span>Bill reminder emails <small>Separate multiple with commas</small></span><input name="reminderEmail" type="text" defaultValue={data.reminderEmail} placeholder="you@gmail.com, partner@gmail.com" required /></label>
             {budgetError && <p className="form-error">{budgetError}</p>}
             <button className="primary-button settings-submit" disabled={budgetPending}><span>{budgetPending ? "Saving..." : "Save budget"}</span><ArrowRight size={16} /></button>
           </form>
