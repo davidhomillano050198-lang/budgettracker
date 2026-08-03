@@ -141,8 +141,8 @@ export function BudgetAllocations({ data, onSaved }: { data: DashboardData; onSa
                 )}
               </div>
               {!editing && (
-                <button type="button" className={row.limit === null ? "alloc-set" : "alloc-edit"} onClick={() => startEdit(row)}>
-                  {row.limit === null ? "Set limit" : "Edit"}
+                <button type="button" className="alloc-set" onClick={() => startEdit(row)}>
+                  Set limit
                 </button>
               )}
             </div>
