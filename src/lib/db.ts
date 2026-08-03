@@ -19,7 +19,7 @@ const MEMBER_COLORS = [
   "#7C837F",
 ];
 
-const HOUSEHOLD_ID = "household-main";
+const LEGACY_DEV_HOUSEHOLD_ID = "household-main";
 
 /**
  * Minimal database contract shared by both backends:
@@ -49,6 +49,7 @@ const schema = `
     household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
+    password_set BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
   CREATE TABLE IF NOT EXISTS member_profiles (
@@ -189,14 +190,14 @@ async function seedDatabase(db: DbClient) {
   console.info(`[db] Seeding fresh database (demo data: ${includeDemoData ? "on" : "off"})`);
 
   await db.transaction(async (tx) => {
-    await tx.query("INSERT INTO households (id, name) VALUES ($1, $2)", [HOUSEHOLD_ID, "Our Household"]);
+    await tx.query("INSERT INTO households (id, name) VALUES ($1, $2)", [LEGACY_DEV_HOUSEHOLD_ID, "Our Household"]);
     await tx.query(
       "INSERT INTO credentials (id, household_id, email, password_hash) VALUES ($1, $2, $3, $4)",
-      ["credential-main", HOUSEHOLD_ID, email, passwordHash],
+      ["credential-main", LEGACY_DEV_HOUSEHOLD_ID, email, passwordHash],
     );
     await tx.query(
       "INSERT INTO household_settings (household_id, monthly_budget, reminder_email) VALUES ($1, $2, $3)",
-      [HOUSEHOLD_ID, 65000, email],
+      [LEGACY_DEV_HOUSEHOLD_ID, 65000, email],
     );
 
     const members = [
@@ -206,7 +207,7 @@ async function seedDatabase(db: DbClient) {
     for (const member of members) {
       await tx.query(
         "INSERT INTO member_profiles (id, household_id, name, initials, color, relationship, budget_role) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-        [member[0], HOUSEHOLD_ID, member[1], member[2], member[3], member[4], member[5]],
+        [member[0], LEGACY_DEV_HOUSEHOLD_ID, member[1], member[2], member[3], member[4], member[5]],
       );
     }
 
@@ -224,7 +225,7 @@ async function seedDatabase(db: DbClient) {
     for (const category of categories) {
       await tx.query(
         "INSERT INTO categories (id, household_id, name, color, icon, kind) VALUES ($1, $2, $3, $4, $5, $6)",
-        [category[0], HOUSEHOLD_ID, category[1], category[2], category[3], category[4]],
+        [category[0], LEGACY_DEV_HOUSEHOLD_ID, category[1], category[2], category[3], category[4]],
       );
     }
 
@@ -244,7 +245,7 @@ async function seedDatabase(db: DbClient) {
         const variation = type === "income" ? offset * -500 : Math.abs(offset) * 130;
         await tx.query(
           "INSERT INTO transactions (id, household_id, type, amount, category_id, member_id, note, occurred_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
-          [crypto.randomUUID(), HOUSEHOLD_ID, type, amount + variation, category, member, note, monthDate(offset, day)],
+          [crypto.randomUUID(), LEGACY_DEV_HOUSEHOLD_ID, type, amount + variation, category, member, note, monthDate(offset, day)],
         );
       }
     }
@@ -259,7 +260,7 @@ async function seedDatabase(db: DbClient) {
         "INSERT INTO bills (id, household_id, name, amount, category_id, member_id, due_date, recurrence, reminder_days, note) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
         [
           crypto.randomUUID(),
-          HOUSEHOLD_ID,
+          LEGACY_DEV_HOUSEHOLD_ID,
           name,
           amount,
           category,
@@ -366,7 +367,7 @@ async function initializeDatabase(): Promise<DbClient> {
   await db.exec("ALTER TABLE household_settings ADD COLUMN IF NOT EXISTS base_currency TEXT NOT NULL DEFAULT 'PHP';");
   await db.exec("ALTER TABLE household_settings ADD COLUMN IF NOT EXISTS savings_goal NUMERIC(14,2) NOT NULL DEFAULT 0;");
   await db.exec("ALTER TABLE categories ADD COLUMN IF NOT EXISTS budget_limit NUMERIC(14,2);");
-  await db.exec("ALTER TABLE household_settings ADD COLUMN IF NOT EXISTS savings_goal NUMERIC(14,2) NOT NULL DEFAULT 0;");
+  await db.exec("ALTER TABLE credentials ADD COLUMN IF NOT EXISTS password_set BOOLEAN NOT NULL DEFAULT TRUE;");
   await db.exec("ALTER TABLE member_profiles ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE;");
   await db.exec("ALTER TABLE member_profiles ADD COLUMN IF NOT EXISTS relationship TEXT NOT NULL DEFAULT 'other';");
   await db.exec("ALTER TABLE member_profiles ADD COLUMN IF NOT EXISTS budget_role TEXT NOT NULL DEFAULT 'contributor';");
@@ -396,19 +397,19 @@ export async function getCredential(email: string) {
   return result.rows[0] ?? null;
 }
 
-export async function getDashboardData(memberId?: string): Promise<DashboardData> {
+export async function getDashboardData(householdId: string, memberId?: string): Promise<DashboardData> {
   const db = await getDb();
   await db.query("UPDATE bills SET status = 'overdue' WHERE status = 'upcoming' AND due_date < CURRENT_DATE");
 
   // Optional per-member lens: $2 is NULL for the whole household.
-  const scope = [HOUSEHOLD_ID, memberId ?? null];
+  const scope = [householdId, memberId ?? null];
 
   const settingsPromise = db.query<{
     name: string; monthly_budget: string; currency: string; reminder_email: string; country: string; base_currency: string; savings_goal: string;
   }>(
     `SELECT h.name, s.monthly_budget, s.currency, s.reminder_email, s.country, s.base_currency, s.savings_goal
      FROM households h JOIN household_settings s ON s.household_id = h.id WHERE h.id = $1`,
-    [HOUSEHOLD_ID],
+    [householdId],
   );
   const totalsPromise = db.query<{ balance: string; income: string; expense: string; previous_expense: string }>(
     `SELECT
@@ -463,7 +464,7 @@ export async function getDashboardData(memberId?: string): Promise<DashboardData
   );
   const categoryListPromise = db.query<{ id: string; name: string; color: string; icon: string; kind: Category["kind"]; budget_limit: string | null }>(
     "SELECT id, name, color, icon, kind, budget_limit FROM categories WHERE household_id = $1 ORDER BY kind, name",
-    [HOUSEHOLD_ID],
+    [householdId],
   );
   const memberListPromise = db.query<{
     id: string; name: string; initials: string; color: string;
@@ -483,15 +484,15 @@ export async function getDashboardData(memberId?: string): Promise<DashboardData
      FROM member_profiles m
      WHERE m.household_id = $1 AND m.active = TRUE
      ORDER BY CASE m.budget_role WHEN 'owner' THEN 0 WHEN 'planner' THEN 1 ELSE 2 END, m.name`,
-    [HOUSEHOLD_ID],
+    [householdId],
   );
   const savingsSummaryPromise = db.query<{ balance: string }>(
     "SELECT COALESCE(SUM(amount), 0) AS balance FROM savings_entries WHERE household_id = $1 AND reversed_at IS NULL",
-    [HOUSEHOLD_ID],
+    [householdId],
   );
   const savingsActivityPromise = db.query<{ id: string; kind: SavingsEntryKind; amount: string; note: string; created_at: Date }>(
     "SELECT id, kind, amount, note, created_at FROM savings_entries WHERE household_id = $1 AND reversed_at IS NULL ORDER BY created_at DESC LIMIT 5",
-    [HOUSEHOLD_ID],
+    [householdId],
   );
   const [
     settings,
@@ -692,7 +693,7 @@ const cashFlowQueries: Record<CashFlowRange, string> = {
     GROUP BY b.bucket ORDER BY b.bucket`,
 };
 
-export async function getCashFlowData(range: CashFlowRange, memberId?: string, anchor?: string): Promise<CashFlowData> {
+export async function getCashFlowData(householdId: string, range: CashFlowRange, memberId?: string, anchor?: string): Promise<CashFlowData> {
   const db = await getDb();
   // Every range query joins transactions with the same fragment, so the
   // optional per-member lens can be injected uniformly. $3 anchors the window
@@ -701,7 +702,7 @@ export async function getCashFlowData(range: CashFlowRange, memberId?: string, a
     "LEFT JOIN transactions t ON t.household_id = $1 AND t.deleted_at IS NULL",
     "LEFT JOIN transactions t ON t.household_id = $1 AND t.deleted_at IS NULL AND ($2::text IS NULL OR t.member_id = $2)",
   );
-  const result = await db.query<{ label: string; detail: string; income: string; expense: string; tx_count: number }>(sql, [HOUSEHOLD_ID, memberId ?? null, anchor ?? null]);
+  const result = await db.query<{ label: string; detail: string; income: string; expense: string; tx_count: number }>(sql, [householdId, memberId ?? null, anchor ?? null]);
   const points = result.rows.map((row) => ({
     month: row.label,
     detail: row.detail,
@@ -730,12 +731,12 @@ export type TransactionInput = {
   note: string; paymentMethod: PaymentMethod; occurredAt: string;
 };
 
-export async function createTransaction(input: TransactionInput) {
+export async function createTransaction(householdId: string, input: TransactionInput) {
   const db = await getDb();
   const id = crypto.randomUUID();
   await db.query(
     "INSERT INTO transactions (id, household_id, type, amount, category_id, member_id, note, payment_method, occurred_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
-    [id, HOUSEHOLD_ID, input.type, input.amount, input.categoryId, input.memberId, input.note, input.paymentMethod, input.occurredAt],
+    [id, householdId, input.type, input.amount, input.categoryId, input.memberId, input.note, input.paymentMethod, input.occurredAt],
   );
   return id;
 }
@@ -745,10 +746,10 @@ export type TransactionFilters = {
   from?: string; to?: string; limit?: number;
 };
 
-export async function listTransactions(filters: TransactionFilters): Promise<TransactionItem[]> {
+export async function listTransactions(householdId: string, filters: TransactionFilters): Promise<TransactionItem[]> {
   const db = await getDb();
   const where: string[] = ["t.household_id = $1", "t.deleted_at IS NULL"];
-  const params: unknown[] = [HOUSEHOLD_ID];
+  const params: unknown[] = [householdId];
   if (filters.type) { params.push(filters.type); where.push(`t.type = $${params.length}`); }
   if (filters.categoryId) { params.push(filters.categoryId); where.push(`t.category_id = $${params.length}`); }
   if (filters.memberId) { params.push(filters.memberId); where.push(`t.member_id = $${params.length}`); }
@@ -765,50 +766,50 @@ export async function listTransactions(filters: TransactionFilters): Promise<Tra
 
 export type MutationResult = "ok" | "not_found" | "bill_locked";
 
-export async function updateTransaction(id: string, input: TransactionInput): Promise<MutationResult> {
+export async function updateTransaction(householdId: string, id: string, input: TransactionInput): Promise<MutationResult> {
   const db = await getDb();
   const existing = await db.query<{ bill_id: string | null }>(
     "SELECT bill_id FROM transactions WHERE id = $1 AND household_id = $2 AND deleted_at IS NULL",
-    [id, HOUSEHOLD_ID],
+    [id, householdId],
   );
   const row = existing.rows[0];
   if (!row) return "not_found";
   if (row.bill_id) return "bill_locked";
   await db.query(
     "UPDATE transactions SET type = $1, amount = $2, category_id = $3, member_id = $4, note = $5, payment_method = $6, occurred_at = $7 WHERE id = $8 AND household_id = $9 AND deleted_at IS NULL",
-    [input.type, input.amount, input.categoryId, input.memberId, input.note, input.paymentMethod, input.occurredAt, id, HOUSEHOLD_ID],
+    [input.type, input.amount, input.categoryId, input.memberId, input.note, input.paymentMethod, input.occurredAt, id, householdId],
   );
   return "ok";
 }
 
-export async function deleteTransaction(id: string): Promise<MutationResult> {
+export async function deleteTransaction(householdId: string, id: string): Promise<MutationResult> {
   const db = await getDb();
   const existing = await db.query<{ bill_id: string | null }>(
     "SELECT bill_id FROM transactions WHERE id = $1 AND household_id = $2 AND deleted_at IS NULL",
-    [id, HOUSEHOLD_ID],
+    [id, householdId],
   );
   const row = existing.rows[0];
   if (!row) return "not_found";
   if (row.bill_id) return "bill_locked";
-  await db.query("UPDATE transactions SET deleted_at = NOW() WHERE id = $1 AND household_id = $2", [id, HOUSEHOLD_ID]);
+  await db.query("UPDATE transactions SET deleted_at = NOW() WHERE id = $1 AND household_id = $2", [id, householdId]);
   return "ok";
 }
 
-export async function restoreTransaction(id: string): Promise<MutationResult> {
+export async function restoreTransaction(householdId: string, id: string): Promise<MutationResult> {
   const db = await getDb();
   const existing = await db.query<{ bill_id: string | null; deleted_at: Date | null }>(
     "SELECT bill_id, deleted_at FROM transactions WHERE id = $1 AND household_id = $2",
-    [id, HOUSEHOLD_ID],
+    [id, householdId],
   );
   const row = existing.rows[0];
   if (!row) return "not_found";
   if (row.bill_id) return "bill_locked";
   if (!row.deleted_at) return "ok";
-  await db.query("UPDATE transactions SET deleted_at = NULL WHERE id = $1 AND household_id = $2", [id, HOUSEHOLD_ID]);
+  await db.query("UPDATE transactions SET deleted_at = NULL WHERE id = $1 AND household_id = $2", [id, householdId]);
   return "ok";
 }
 
-export async function createBill(input: {
+export async function createBill(householdId: string, input: {
   name: string; amount: number; categoryId: string; memberId: string; dueDate: string;
   recurrence: BillItem["recurrence"]; reminderDays: number[]; note: string;
 }) {
@@ -816,7 +817,7 @@ export async function createBill(input: {
   const id = crypto.randomUUID();
   await db.query(
     "INSERT INTO bills (id, household_id, name, amount, category_id, member_id, due_date, recurrence, reminder_days, note) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
-    [id, HOUSEHOLD_ID, input.name, input.amount, input.categoryId, input.memberId, input.dueDate, input.recurrence, input.reminderDays, input.note],
+    [id, householdId, input.name, input.amount, input.categoryId, input.memberId, input.dueDate, input.recurrence, input.reminderDays, input.note],
   );
   return id;
 }
@@ -827,7 +828,7 @@ const RECURRENCE_INTERVALS: Record<string, string> = {
   yearly: "1 year",
 };
 
-export async function payBill(id: string) {
+export async function payBill(householdId: string, id: string) {
   const db = await getDb();
   return db.transaction(async (tx) => {
     const result = await tx.query<{
@@ -835,7 +836,7 @@ export async function payBill(id: string) {
       recurrence: string; due_date: string | Date; reminder_days: number[]; note: string;
     }>(
       "SELECT id, amount, category_id, member_id, name, status, recurrence, due_date, reminder_days, note FROM bills WHERE id = $1 AND household_id = $2 FOR UPDATE",
-      [id, HOUSEHOLD_ID],
+      [id, householdId],
     );
     const bill = result.rows[0];
     if (!bill) throw new Error("Bill not found");
@@ -843,7 +844,7 @@ export async function payBill(id: string) {
     await tx.query("UPDATE bills SET status = 'paid', paid_at = NOW() WHERE id = $1", [id]);
     await tx.query(
       "INSERT INTO transactions (id, household_id, type, amount, category_id, member_id, note, occurred_at, bill_id) VALUES ($1,$2,'expense',$3,$4,$5,$6,NOW(),$7)",
-      [crypto.randomUUID(), HOUSEHOLD_ID, bill.amount, bill.category_id, bill.member_id, `${bill.name} payment`, id],
+      [crypto.randomUUID(), householdId, bill.amount, bill.category_id, bill.member_id, `${bill.name} payment`, id],
     );
     // Recurring bills roll forward: paying this cycle schedules the next one,
     // so reminders keep working month after month without re-entry.
@@ -852,20 +853,20 @@ export async function payBill(id: string) {
       await tx.query(
         `INSERT INTO bills (id, household_id, name, amount, category_id, member_id, due_date, recurrence, reminder_days, note)
          VALUES ($1, $2, $3, $4, $5, $6, $7::date + $8::interval, $9, $10, $11)`,
-        [crypto.randomUUID(), HOUSEHOLD_ID, bill.name, bill.amount, bill.category_id, bill.member_id, bill.due_date, interval, bill.recurrence, bill.reminder_days, bill.note],
+        [crypto.randomUUID(), householdId, bill.name, bill.amount, bill.category_id, bill.member_id, bill.due_date, interval, bill.recurrence, bill.reminder_days, bill.note],
       );
     }
     return true;
   });
 }
 
-export async function updateSettings(monthlyBudget: number, reminderEmail: string, country?: string, currency?: string) {
+export async function updateSettings(householdId: string, monthlyBudget: number, reminderEmail: string, country?: string, currency?: string) {
   const db = await getDb();
   await db.query(
     `UPDATE household_settings SET monthly_budget = $1, reminder_email = $2,
        country = COALESCE($3, country), currency = COALESCE($4, currency)
      WHERE household_id = $5`,
-    [monthlyBudget, reminderEmail, country ?? null, currency ?? null, HOUSEHOLD_ID],
+    [monthlyBudget, reminderEmail, country ?? null, currency ?? null, householdId],
   );
 }
 
@@ -881,13 +882,13 @@ export type SavingsMutationResult =
 const roundMoney = (value: number) => Math.round(value * 100) / 100;
 
 /** Append-only savings ledger. Corrections record only the delta, preserving history. */
-export async function createSavingsEntry(input: SavingsEntryInput): Promise<SavingsMutationResult> {
+export async function createSavingsEntry(householdId: string, input: SavingsEntryInput): Promise<SavingsMutationResult> {
   const db = await getDb();
   return db.transaction(async (tx) => {
-    await tx.query("SELECT id FROM households WHERE id = $1 FOR UPDATE", [HOUSEHOLD_ID]);
+    await tx.query("SELECT id FROM households WHERE id = $1 FOR UPDATE", [householdId]);
     const total = await tx.query<{ balance: string }>(
       "SELECT COALESCE(SUM(amount), 0) AS balance FROM savings_entries WHERE household_id = $1 AND reversed_at IS NULL",
-      [HOUSEHOLD_ID],
+      [householdId],
     );
     const currentBalance = Number(total.rows[0]?.balance ?? 0);
     const amount = input.kind === "correction"
@@ -901,93 +902,93 @@ export async function createSavingsEntry(input: SavingsEntryInput): Promise<Savi
     const id = crypto.randomUUID();
     await tx.query(
       "INSERT INTO savings_entries (id, household_id, kind, amount, note) VALUES ($1, $2, $3, $4, $5)",
-      [id, HOUSEHOLD_ID, input.kind, amount, input.note.trim()],
+      [id, householdId, input.kind, amount, input.note.trim()],
     );
     return { id, balance };
   });
 }
 
-export async function updateSavingsGoal(savingsGoal: number) {
+export async function updateSavingsGoal(householdId: string, savingsGoal: number) {
   const db = await getDb();
   await db.query(
     "UPDATE household_settings SET savings_goal = $1 WHERE household_id = $2",
-    [roundMoney(savingsGoal), HOUSEHOLD_ID],
+    [roundMoney(savingsGoal), householdId],
   );
 }
 
 export type ReverseSavingsResult = "ok" | "not_found" | "would_be_negative";
 
 /** Soft-reverse an entry so Undo never destroys the financial audit trail. */
-export async function reverseSavingsEntry(id: string): Promise<ReverseSavingsResult> {
+export async function reverseSavingsEntry(householdId: string, id: string): Promise<ReverseSavingsResult> {
   const db = await getDb();
   return db.transaction(async (tx) => {
-    await tx.query("SELECT id FROM households WHERE id = $1 FOR UPDATE", [HOUSEHOLD_ID]);
+    await tx.query("SELECT id FROM households WHERE id = $1 FOR UPDATE", [householdId]);
     const entry = await tx.query<{ amount: string }>(
       "SELECT amount FROM savings_entries WHERE id = $1 AND household_id = $2 AND reversed_at IS NULL",
-      [id, HOUSEHOLD_ID],
+      [id, householdId],
     );
     if (!entry.rows[0]) return "not_found";
 
     const total = await tx.query<{ balance: string }>(
       "SELECT COALESCE(SUM(amount), 0) AS balance FROM savings_entries WHERE household_id = $1 AND reversed_at IS NULL",
-      [HOUSEHOLD_ID],
+      [householdId],
     );
     if (roundMoney(Number(total.rows[0]?.balance ?? 0) - Number(entry.rows[0].amount)) < 0) return "would_be_negative";
 
     await tx.query(
       "UPDATE savings_entries SET reversed_at = NOW() WHERE id = $1 AND household_id = $2 AND reversed_at IS NULL",
-      [id, HOUSEHOLD_ID],
+      [id, householdId],
     );
     return "ok";
   });
 }
 
 /** Set (or clear, with null) a category's monthly envelope allocation. */
-export async function setCategoryAllocation(id: string, amount: number | null): Promise<"ok" | "not_found"> {
+export async function setCategoryAllocation(householdId: string, id: string, amount: number | null): Promise<"ok" | "not_found"> {
   const db = await getDb();
   const existing = await db.query<{ id: string }>(
     "SELECT id FROM categories WHERE id = $1 AND household_id = $2",
-    [id, HOUSEHOLD_ID],
+    [id, householdId],
   );
   if (!existing.rows[0]) return "not_found";
   await db.query(
     "UPDATE categories SET budget_limit = $1 WHERE id = $2 AND household_id = $3",
-    [amount, id, HOUSEHOLD_ID],
+    [amount, id, householdId],
   );
   return "ok";
 }
 
 export type CategoryMutationResult = "ok" | "not_found" | { inUse: number };
 
-export async function createCategory(input: { name: string; color: string; kind: "expense" | "income" }) {
+export async function createCategory(householdId: string, input: { name: string; color: string; kind: "expense" | "income" }) {
   const db = await getDb();
   const id = crypto.randomUUID();
   await db.query(
     "INSERT INTO categories (id, household_id, name, color, icon, kind) VALUES ($1, $2, $3, $4, 'tag', $5)",
-    [id, HOUSEHOLD_ID, input.name.trim(), input.color, input.kind],
+    [id, householdId, input.name.trim(), input.color, input.kind],
   );
   return id;
 }
 
-export async function updateCategory(id: string, input: { name: string; color: string }): Promise<CategoryMutationResult> {
+export async function updateCategory(householdId: string, id: string, input: { name: string; color: string }): Promise<CategoryMutationResult> {
   const db = await getDb();
   const existing = await db.query<{ id: string }>(
     "SELECT id FROM categories WHERE id = $1 AND household_id = $2",
-    [id, HOUSEHOLD_ID],
+    [id, householdId],
   );
   if (!existing.rows[0]) return "not_found";
   await db.query(
     "UPDATE categories SET name = $1, color = $2 WHERE id = $3 AND household_id = $4",
-    [input.name.trim(), input.color, id, HOUSEHOLD_ID],
+    [input.name.trim(), input.color, id, householdId],
   );
   return "ok";
 }
 
-export async function deleteCategory(id: string): Promise<CategoryMutationResult> {
+export async function deleteCategory(householdId: string, id: string): Promise<CategoryMutationResult> {
   const db = await getDb();
   const existing = await db.query<{ id: string }>(
     "SELECT id FROM categories WHERE id = $1 AND household_id = $2",
-    [id, HOUSEHOLD_ID],
+    [id, householdId],
   );
   if (!existing.rows[0]) return "not_found";
   // A category referenced by history can't be removed — that would orphan records.
@@ -996,25 +997,25 @@ export async function deleteCategory(id: string): Promise<CategoryMutationResult
        (SELECT COUNT(*) FROM transactions WHERE category_id = $1 AND household_id = $2)
        + (SELECT COUNT(*) FROM bills WHERE category_id = $1 AND household_id = $2)
      )::int AS total`,
-    [id, HOUSEHOLD_ID],
+    [id, householdId],
   );
   const inUse = Number(usage.rows[0]?.total ?? 0);
   if (inUse > 0) return { inUse };
-  await db.query("DELETE FROM categories WHERE id = $1 AND household_id = $2", [id, HOUSEHOLD_ID]);
+  await db.query("DELETE FROM categories WHERE id = $1 AND household_id = $2", [id, householdId]);
   return "ok";
 }
 
-export async function updateProfile(householdName: string, members: Array<{
+export async function updateProfile(householdId: string, householdName: string, members: Array<{
   id: string; name: string;
   relationship: MemberRelationship; budgetRole: MemberBudgetRole;
   email: string; monthlyContribution: number;
 }>) {
   const db = await getDb();
   await db.transaction(async (tx) => {
-    await tx.query("UPDATE households SET name = $1 WHERE id = $2", [householdName, HOUSEHOLD_ID]);
+    await tx.query("UPDATE households SET name = $1 WHERE id = $2", [householdName, householdId]);
     const existingMembers = await tx.query<{ id: string }>(
       "SELECT id FROM member_profiles WHERE household_id = $1",
-      [HOUSEHOLD_ID],
+      [householdId],
     );
     const activeIds = new Set(members.map((member) => member.id));
     for (const [index, member] of members.entries()) {
@@ -1027,7 +1028,7 @@ export async function updateProfile(householdName: string, members: Array<{
           "email = EXCLUDED.email, monthly_contribution = EXCLUDED.monthly_contribution, active = TRUE " +
           "WHERE member_profiles.household_id = EXCLUDED.household_id",
         [
-          member.id, HOUSEHOLD_ID, member.name.trim(), initials,
+          member.id, householdId, member.name.trim(), initials,
           MEMBER_COLORS[index % MEMBER_COLORS.length],
           member.relationship, member.budgetRole, member.email || null, member.monthlyContribution,
         ],
@@ -1037,70 +1038,153 @@ export async function updateProfile(householdName: string, members: Array<{
       if (!activeIds.has(existing.id)) {
         await tx.query(
           "UPDATE member_profiles SET active = FALSE WHERE id = $1 AND household_id = $2",
-          [existing.id, HOUSEHOLD_ID],
+          [existing.id, householdId],
         );
       }
     }
   });
 }
 
-export async function getBaseCurrency(): Promise<string> {
+export async function getBaseCurrency(householdId: string): Promise<string> {
   const db = await getDb();
   const result = await db.query<{ base_currency: string }>(
     "SELECT base_currency FROM household_settings WHERE household_id = $1",
-    [HOUSEHOLD_ID],
+    [householdId],
   );
   return result.rows[0]?.base_currency ?? "PHP";
 }
 
-export async function getSecurityInfo() {
+export async function getSecurityInfo(householdId: string) {
   const db = await getDb();
   const result = await db.query<{ email: string; allowed_signin_emails: string[] }>(
     `SELECT c.email, s.allowed_signin_emails
      FROM credentials c JOIN household_settings s ON s.household_id = c.household_id
      WHERE c.household_id = $1 LIMIT 1`,
-    [HOUSEHOLD_ID],
+    [householdId],
   );
   const row = result.rows[0];
   return { loginEmail: row.email, allowedEmails: row.allowed_signin_emails ?? [] };
 }
 
 /** Is this email allowed to sign in via OAuth? (Login email or explicitly allowed.) */
-export async function isEmailAllowed(email: string) {
-  const info = await getSecurityInfo();
+export async function isEmailAllowed(householdId: string, email: string) {
+  const info = await getSecurityInfo(householdId);
   const normalized = email.trim().toLowerCase();
   return info.loginEmail === normalized || info.allowedEmails.includes(normalized);
 }
 
-/** Map an OAuth-verified email to a session, if the household allows it. */
+const DEFAULT_CATEGORIES: Array<[string, string, string, "expense" | "income"]> = [
+  ["Food & Dining", "#D77A58", "utensils", "expense"],
+  ["Transport", "#5B83A6", "car", "expense"],
+  ["Shopping", "#D6A84B", "shopping-bag", "expense"],
+  ["Home", "#8B78A8", "house", "expense"],
+  ["Health", "#D25D64", "heart-pulse", "expense"],
+  ["Leisure", "#4D9A8B", "sparkles", "expense"],
+  ["Others", "#7C837F", "ellipsis", "expense"],
+  ["Salary", "#16A368", "briefcase-business", "income"],
+  ["Other Income", "#3C8F76", "circle-plus", "income"],
+];
+
+/**
+ * Provision a brand-new household: its own settings, default members, and
+ * category set. Used by email sign-up and by Google sign-in for emails no
+ * household knows yet. `passwordHash: null` marks an OAuth-created account
+ * (password_set=false) so the owner can set a password later without
+ * knowing the random placeholder.
+ */
+export async function createHousehold(input: {
+  email: string;
+  passwordHash: string | null;
+  householdName?: string;
+}): Promise<string> {
+  const db = await getDb();
+  const householdId = crypto.randomUUID();
+  const email = input.email.trim().toLowerCase();
+  const passwordSet = input.passwordHash !== null;
+  const passwordHash = input.passwordHash ?? (await hash(crypto.randomUUID() + crypto.randomUUID(), 12));
+  await db.transaction(async (tx) => {
+    await tx.query("INSERT INTO households (id, name) VALUES ($1, $2)", [householdId, input.householdName?.trim() || "Our Household"]);
+    await tx.query(
+      "INSERT INTO credentials (id, household_id, email, password_hash, password_set) VALUES ($1, $2, $3, $4, $5)",
+      [crypto.randomUUID(), householdId, email, passwordHash, passwordSet],
+    );
+    await tx.query(
+      "INSERT INTO household_settings (household_id, monthly_budget, reminder_email) VALUES ($1, $2, $3)",
+      [householdId, 50000, email],
+    );
+    const members: Array<[string, string, string, string, string]> = [
+      ["You", "YO", "#1D2924", "self", "owner"],
+      ["Partner", "PA", "#D77A58", "partner", "contributor"],
+    ];
+    for (const [name, initials, color, relationship, role] of members) {
+      await tx.query(
+        "INSERT INTO member_profiles (id, household_id, name, initials, color, relationship, budget_role) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        [crypto.randomUUID(), householdId, name, initials, color, relationship, role],
+      );
+    }
+    for (const [name, color, icon, kind] of DEFAULT_CATEGORIES) {
+      await tx.query(
+        "INSERT INTO categories (id, household_id, name, color, icon, kind) VALUES ($1, $2, $3, $4, $5, $6)",
+        [crypto.randomUUID(), householdId, name, color, icon, kind],
+      );
+    }
+  });
+  return householdId;
+}
+
+/**
+ * Find which household an email belongs to: the household whose login
+ * credential uses it, or the first household that has whitelisted it.
+ */
+export async function findHouseholdForEmail(email: string): Promise<string | null> {
+  const db = await getDb();
+  const normalized = email.trim().toLowerCase();
+  const credential = await db.query<{ household_id: string }>(
+    "SELECT household_id FROM credentials WHERE email = $1 LIMIT 1",
+    [normalized],
+  );
+  if (credential.rows[0]) return credential.rows[0].household_id;
+  const allowed = await db.query<{ household_id: string }>(
+    "SELECT household_id FROM household_settings WHERE $1 = ANY(allowed_signin_emails) LIMIT 1",
+    [normalized],
+  );
+  return allowed.rows[0]?.household_id ?? null;
+}
+
+/** Map an OAuth-verified email to a session for whichever household knows it. */
 export async function resolveOAuthSession(email: string) {
   const normalized = email.trim().toLowerCase();
-  return (await isEmailAllowed(normalized)) ? { householdId: HOUSEHOLD_ID, email: normalized } : null;
+  const householdId = await findHouseholdForEmail(normalized);
+  return householdId ? { householdId, email: normalized } : null;
 }
 
 export type CredentialUpdateResult = "ok" | "wrong_password";
 
-export async function updateCredential(input: {
+export async function updateCredential(householdId: string, input: {
   currentPassword: string; newEmail?: string; newPassword?: string; allowedEmails?: string[];
 }): Promise<CredentialUpdateResult> {
   const db = await getDb();
-  const existing = await db.query<{ id: string; password_hash: string }>(
-    "SELECT id, password_hash FROM credentials WHERE household_id = $1 LIMIT 1",
-    [HOUSEHOLD_ID],
+  const existing = await db.query<{ id: string; password_hash: string; password_set: boolean }>(
+    "SELECT id, password_hash, password_set FROM credentials WHERE household_id = $1 LIMIT 1",
+    [householdId],
   );
   const credential = existing.rows[0];
-  if (!credential || !(await compare(input.currentPassword, credential.password_hash))) return "wrong_password";
+  if (!credential) return "wrong_password";
+  // Accounts created via Google sign-in have a random placeholder password
+  // (password_set=false); their first change skips the current-password check
+  // since the session itself already proved account ownership.
+  if (credential.password_set && !(await compare(input.currentPassword, credential.password_hash))) return "wrong_password";
   await db.transaction(async (tx) => {
     if (input.newEmail) {
       await tx.query("UPDATE credentials SET email = $1 WHERE id = $2", [input.newEmail.trim().toLowerCase(), credential.id]);
     }
     if (input.newPassword) {
-      await tx.query("UPDATE credentials SET password_hash = $1 WHERE id = $2", [await hash(input.newPassword, 12), credential.id]);
+      await tx.query("UPDATE credentials SET password_hash = $1, password_set = TRUE WHERE id = $2", [await hash(input.newPassword, 12), credential.id]);
     }
     if (input.allowedEmails) {
       await tx.query(
         "UPDATE household_settings SET allowed_signin_emails = $1 WHERE household_id = $2",
-        [input.allowedEmails.map((e) => e.trim().toLowerCase()).filter(Boolean), HOUSEHOLD_ID],
+        [input.allowedEmails.map((e) => e.trim().toLowerCase()).filter(Boolean), householdId],
       );
     }
   });
@@ -1114,8 +1198,7 @@ export async function getPendingBillReminders() {
   }>(
     `SELECT b.id, b.name, b.amount, b.due_date, b.reminder_days, s.reminder_email
      FROM bills b JOIN household_settings s ON s.household_id = b.household_id
-     WHERE b.household_id = $1 AND b.status <> 'paid' AND b.due_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days'`,
-    [HOUSEHOLD_ID],
+     WHERE b.status <> 'paid' AND b.due_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days'`,
   );
   const today = new Date();
   today.setHours(0, 0, 0, 0);

@@ -5,7 +5,8 @@ import { updateSettings } from "@/lib/db";
 import { budgetSchema } from "@/lib/validation";
 
 export async function PUT(request: Request) {
-  if (!(await getSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const parsed = budgetSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid settings" }, { status: 400 });
@@ -20,6 +21,6 @@ export async function PUT(request: Request) {
     country = option.code;
     currency = option.currency;
   }
-  await updateSettings(parsed.data.monthlyBudget, parsed.data.reminderEmail, country, currency);
+  await updateSettings(session.householdId, parsed.data.monthlyBudget, parsed.data.reminderEmail, country, currency);
   return NextResponse.json({ ok: true });
 }

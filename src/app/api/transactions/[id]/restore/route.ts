@@ -14,7 +14,8 @@ function respond(result: MutationResult) {
 }
 
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
-  if (!(await getSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await context.params;
-  return respond(await restoreTransaction(id));
+  return respond(await restoreTransaction(session.householdId, id));
 }

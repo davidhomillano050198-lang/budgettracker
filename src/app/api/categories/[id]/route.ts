@@ -15,17 +15,19 @@ function respond(result: CategoryMutationResult) {
 }
 
 export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
-  if (!(await getSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await context.params;
   const parsed = categoryUpdateSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid category" }, { status: 400 });
   }
-  return respond(await updateCategory(id, parsed.data));
+  return respond(await updateCategory(session.householdId, id, parsed.data));
 }
 
 export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
-  if (!(await getSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await context.params;
-  return respond(await deleteCategory(id));
+  return respond(await deleteCategory(session.householdId, id));
 }

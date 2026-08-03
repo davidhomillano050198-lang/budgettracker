@@ -6,7 +6,8 @@ import { transactionSchema } from "@/lib/validation";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  if (!(await getSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const params = new URL(request.url).searchParams;
   const typeParam = params.get("type");
   const filters: TransactionFilters = {
@@ -17,15 +18,16 @@ export async function GET(request: Request) {
     from: params.get("from") || undefined,
     to: params.get("to") || undefined,
   };
-  return NextResponse.json(await listTransactions(filters));
+  return NextResponse.json(await listTransactions(session.householdId, filters));
 }
 
 export async function POST(request: Request) {
-  if (!(await getSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const parsed = transactionSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid transaction" }, { status: 400 });
   }
-  const id = await createTransaction(parsed.data);
+  const id = await createTransaction(session.householdId, parsed.data);
   return NextResponse.json({ id }, { status: 201 });
 }

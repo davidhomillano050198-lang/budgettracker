@@ -8,7 +8,8 @@ const ranges = new Set<CashFlowRange>(["1d", "7d", "4w", "12m", "3y"]);
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  if (!(await getSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const params = new URL(request.url).searchParams;
   const requested = params.get("range") as CashFlowRange | null;
   const range = requested && ranges.has(requested) ? requested : "12m";
@@ -18,5 +19,5 @@ export async function GET(request: Request) {
   const anchor = anchorRaw && /^\d{4}-\d{2}-\d{2}$/.test(anchorRaw) && !Number.isNaN(Date.parse(anchorRaw))
     ? anchorRaw
     : undefined;
-  return NextResponse.json(await getCashFlowData(range, memberId, anchor));
+  return NextResponse.json(await getCashFlowData(session.householdId, range, memberId, anchor));
 }

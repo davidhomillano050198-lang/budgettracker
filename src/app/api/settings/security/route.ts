@@ -6,8 +6,9 @@ import { securitySchema } from "@/lib/validation";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  if (!(await getSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  return NextResponse.json(await getSecurityInfo());
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  return NextResponse.json(await getSecurityInfo(session.householdId));
 }
 
 export async function PUT(request: Request) {
@@ -17,7 +18,7 @@ export async function PUT(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request" }, { status: 400 });
   }
-  const result = await updateCredential(parsed.data);
+  const result = await updateCredential(session.householdId, parsed.data);
   if (result === "wrong_password") {
     return NextResponse.json({ error: "Current password is incorrect." }, { status: 403 });
   }

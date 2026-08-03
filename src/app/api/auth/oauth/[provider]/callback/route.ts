@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { createAuthCookies } from "@/lib/auth";
-import { resolveOAuthSession } from "@/lib/db";
+import { createHousehold, resolveOAuthSession } from "@/lib/db";
 import { exchangeCodeForEmail, isOAuthProvider, requestOrigin } from "@/lib/oauth";
 
 const STATE_COOKIE = "bt_oauth_state";
@@ -24,9 +24,15 @@ export async function GET(request: Request, context: { params: Promise<{ provide
   const email = await exchangeCodeForEmail(provider, origin, code).catch(() => null);
   if (!email) return fail("exchange-failed");
 
+  // Known email (household login or whitelisted partner) → sign into that
+  // household. Unknown email → welcome aboard: provision a fresh household.
   const session = await resolveOAuthSession(email);
-  if (!session) return fail("email-not-allowed");
+  if (session) {
+    await createAuthCookies(session);
+    return NextResponse.redirect(`${origin}/`);
+  }
 
-  await createAuthCookies(session);
-  return NextResponse.redirect(`${origin}/`);
+  const householdId = await createHousehold({ email, passwordHash: null });
+  await createAuthCookies({ householdId, email });
+  return NextResponse.redirect(`${origin}/?welcome=1`);
 }
