@@ -1,8 +1,9 @@
 "use client";
 
-import { AlertTriangle, Check, PiggyBank, SlidersHorizontal, Wallet, X } from "lucide-react";
+import { AlertTriangle, Check, PiggyBank, Plus, SlidersHorizontal, Wallet, X } from "lucide-react";
 import { useState } from "react";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
+import { CategoryManager } from "@/components/category-manager";
 import { currencySymbol, formatCurrency, toBaseAmount, toDisplayAmount } from "@/lib/format";
 import type { DashboardData } from "@/lib/types";
 
@@ -27,6 +28,7 @@ export function BudgetAllocations({ data, onSaved }: { data: DashboardData; onSa
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [manageOpen, setManageOpen] = useState(false);
 
   const spentByCategory = new Map(data.categorySpend.map((entry) => [entry.id, entry.amount]));
   const rows: AllocationRow[] = data.categories
@@ -77,7 +79,7 @@ export function BudgetAllocations({ data, onSaved }: { data: DashboardData; onSa
     <article className="panel allocations-panel">
       <div className="section-heading">
         <div><p>Envelope budgeting</p><h2>Category allocations</h2></div>
-        <span className="allocation-icon"><SlidersHorizontal size={15} /></span>
+        <button type="button" className="allocation-icon allocation-manage" onClick={() => setManageOpen(true)} title="Manage categories" aria-label="Manage categories"><SlidersHorizontal size={15} /></button>
       </div>
 
       <div className={`allocation-summary ${overAllocated ? "over" : ""}`}>
@@ -148,6 +150,28 @@ export function BudgetAllocations({ data, onSaved }: { data: DashboardData; onSa
         })}
       </div>
       {error && <p className="form-error" role="alert">{error}</p>}
+
+      <button type="button" className="allocation-add" onClick={() => setManageOpen(true)}>
+        <Plus size={15} /><span>New category</span>
+      </button>
+
+      <AnimatePresence>
+        {manageOpen && (
+          <motion.div className="modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onMouseDown={(event) => event.target === event.currentTarget && setManageOpen(false)}>
+            <motion.section className="modal-sheet manage-sheet" role="dialog" aria-modal="true" aria-label="Manage categories"
+              initial={{ opacity: 0, y: 24, scale: 0.985 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.99 }}>
+              <header>
+                <div><p className="eyebrow">Envelope budgeting</p><h2>Manage categories</h2><p>Add, rename, recolor, or remove your spending and income categories.</p></div>
+                <button type="button" className="icon-button" onClick={() => setManageOpen(false)} title="Close"><X size={19} /></button>
+              </header>
+              <div className="manage-sheet-body">
+                <CategoryManager categories={data.categories} onSaved={onSaved} />
+              </div>
+            </motion.section>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </article>
   );
 }
