@@ -636,6 +636,15 @@ body {
 /* Envelope budgeting — category allocations */
 .allocations-panel { display: grid; gap: 14px; align-content: start; }
 .allocation-icon { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 9px; background: var(--accent-soft); color: var(--green-deep); }
+.allocation-manage { border: 0; cursor: pointer; transition: background .15s ease, transform .15s ease; }
+.allocation-manage:hover { background: rgba(18, 162, 102, .2); transform: translateY(-1px); }
+.allocation-manage:active { transform: translateY(0); }
+.allocation-add { width: 100%; min-height: 46px; margin-top: 14px; padding: 0 14px; border: 1px dashed #c4ccc6; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 620; transition: border-color .15s ease, color .15s ease, background .15s ease; }
+.allocation-add:hover { border-color: var(--green); color: var(--green-deep); background: var(--accent-soft); }
+html[data-theme="dark"] .allocation-add { border-color: #3a463e; }
+.manage-sheet .manage-sheet-body { padding: 20px 24px 24px; }
+.manage-sheet header p:first-child { color: var(--green-deep); }
+@media (max-width: 640px) { .manage-sheet .manage-sheet-body { padding: 17px; } }
 .allocation-summary { padding: 14px 15px; border: 1px solid var(--line); border-radius: 12px; background: var(--soft); display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
 .allocation-summary.over { border-color: rgba(201, 77, 85, .4); background: rgba(201, 77, 85, .07); }
 .allocation-summary-item span { display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 10px; font-weight: 620; }
