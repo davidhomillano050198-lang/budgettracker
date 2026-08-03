@@ -51,9 +51,10 @@ export function activeProviders(): Array<{ id: OAuthProviderId; label: string }>
 
 /** All supported providers, with whether their credentials are configured. */
 export function allProviders(): Array<{ id: OAuthProviderId; label: string; configured: boolean }> {
+  // Google-only sign-in. (Facebook flow remains implemented in oauth.ts but is
+  // intentionally not offered on the login screen.)
   return [
     { id: "google", label: "Google", configured: providerConfig("google") !== null },
-    { id: "facebook", label: "Facebook", configured: providerConfig("facebook") !== null },
   ];
 }
 

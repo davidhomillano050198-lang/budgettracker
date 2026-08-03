@@ -36,7 +36,13 @@ export const billSchema = z.object({
 
 export const budgetSchema = z.object({
   monthlyBudget: z.coerce.number().positive().max(100_000_000),
-  reminderEmail: z.string().email().transform((value) => value.trim().toLowerCase()),
+  // One or more recipient emails (comma / semicolon / newline separated).
+  // Stored as a normalized "a@x.com, b@y.com" string; the reminder cron splits it.
+  reminderEmail: z.string()
+    .transform((value) => value.split(/[,;\n]+/).map((item) => item.trim().toLowerCase()).filter(Boolean))
+    .refine((list) => list.length >= 1 && list.length <= 5, "Add between 1 and 5 reminder emails.")
+    .refine((list) => list.every((item) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item)), "One of the reminder emails looks invalid.")
+    .transform((list) => list.join(", ")),
   country: z.string().length(2).transform((value) => value.toUpperCase()).optional(),
 });
 

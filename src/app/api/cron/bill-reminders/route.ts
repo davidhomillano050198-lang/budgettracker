@@ -21,9 +21,11 @@ export async function GET(request: Request) {
   const sent: string[] = [];
   for (const bill of reminders) {
     const dueCopy = bill.reminderDay === 0 ? "due today" : `due in ${bill.reminderDay} days`;
+    // reminder_email may hold several recipients ("a@x.com, b@y.com").
+    const recipients = bill.reminder_email.split(/[,;]+/).map((item) => item.trim()).filter(Boolean);
     const result = await resend.emails.send({
       from: process.env.REMINDER_FROM_EMAIL ?? "BudgetTracker <reminders@budgettracker.app>",
-      to: bill.reminder_email,
+      to: recipients,
       subject: `${bill.name} is ${dueCopy}`,
       html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#1d2924">
         <h1 style="font-size:24px">Bill reminder</h1>
