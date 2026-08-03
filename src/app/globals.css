@@ -77,6 +77,31 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .login-device-note { margin: 22px 0 0; text-align: center; color: #8b938f; font-size: 11px; }
 .mode-switch { width: 100%; margin-top: 16px; padding: 10px; border: 0; background: transparent; color: var(--green-deep); cursor: pointer; font-size: 12px; font-weight: 650; text-align: center; }
 .mode-switch:hover { text-decoration: underline; }
+.login-legal { margin-top: 10px; display: flex; justify-content: center; gap: 14px; }
+.login-legal a { color: #8b938f; font-size: 10px; text-decoration: none; }
+.login-legal a:hover { color: var(--green-deep); text-decoration: underline; }
+
+/* Legal pages (/privacy, /terms) */
+.legal-page { max-width: 680px; margin: 0 auto; padding: 56px 24px 80px; }
+.legal-page h1 { margin: 10px 0 6px; font-size: 34px; letter-spacing: -.02em; font-weight: 650; }
+.legal-updated { margin: 0 0 34px; color: var(--muted); font-size: 12px; }
+.legal-page h2 { margin: 28px 0 8px; font-size: 16px; font-weight: 650; letter-spacing: -.01em; }
+.legal-page p { margin: 0 0 10px; color: var(--muted); font-size: 14px; line-height: 1.75; }
+.legal-page a { color: var(--green-deep); }
+.legal-back { margin-top: 40px; }
+.legal-back a { font-weight: 650; text-decoration: none; }
+.legal-back a:hover { text-decoration: underline; }
+
+/* Danger zone (Settings) */
+.danger-card { border-color: rgba(201, 77, 85, .3) !important; }
+.danger-card .settings-card-icon { background: rgba(201, 77, 85, .12); color: var(--red); }
+.danger-copy { margin: 0 0 14px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.danger-confirm { display: grid; gap: 10px; }
+.danger-button { min-height: 44px; padding: 0 16px; border: 1px solid rgba(201, 77, 85, .45); border-radius: var(--radius-sm); display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: rgba(201, 77, 85, .1); color: var(--red); cursor: pointer; font-size: 13px; font-weight: 650; transition: background .15s ease; }
+.danger-button:hover { background: rgba(201, 77, 85, .18); }
+.danger-button:disabled { opacity: .55; cursor: wait; }
+html[data-theme="dark"] .danger-card { border-color: rgba(201, 77, 85, .35) !important; }
+html[data-theme="dark"] .danger-button { background: rgba(201, 77, 85, .14); color: #e08b91; }
 
 /* App shell */
 .app-shell { min-height: 100vh; background: var(--canvas); }

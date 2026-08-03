@@ -1191,6 +1191,26 @@ export async function updateCredential(householdId: string, input: {
   return "ok";
 }
 
+/**
+ * Permanently delete a household and everything in it. Requires the current
+ * password unless the account was Google-created and never set one (the
+ * session already proves ownership there). All child rows — credentials,
+ * members, categories, settings, bills, transactions, savings — are removed
+ * by the ON DELETE CASCADE foreign keys.
+ */
+export async function deleteHousehold(householdId: string, currentPassword: string): Promise<"ok" | "wrong_password"> {
+  const db = await getDb();
+  const existing = await db.query<{ password_hash: string; password_set: boolean }>(
+    "SELECT password_hash, password_set FROM credentials WHERE household_id = $1 LIMIT 1",
+    [householdId],
+  );
+  const credential = existing.rows[0];
+  if (!credential) return "wrong_password";
+  if (credential.password_set && !(await compare(currentPassword, credential.password_hash))) return "wrong_password";
+  await db.query("DELETE FROM households WHERE id = $1", [householdId]);
+  return "ok";
+}
+
 export async function getPendingBillReminders() {
   const db = await getDb();
   const result = await db.query<{
