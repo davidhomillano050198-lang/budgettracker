@@ -167,12 +167,26 @@ function monthDate(monthOffset: number, day: number, hour = 10) {
   return new Date(now.getFullYear(), now.getMonth() + monthOffset, Math.min(day, 25), hour).toISOString();
 }
 
+/**
+ * Demo transactions/bills are seeded only when explicitly requested via
+ * SEED_DEMO_DATA=true, or by default in local development. Production
+ * databases start clean: household, login, members, and categories only.
+ */
+function demoSeedEnabled() {
+  const flag = process.env.SEED_DEMO_DATA;
+  if (flag === "true") return true;
+  if (flag === "false") return false;
+  return process.env.NODE_ENV !== "production";
+}
+
 async function seedDatabase(db: DbClient) {
   const household = await db.query<{ count: number }>("SELECT COUNT(*)::int AS count FROM households");
   if (Number(household.rows[0]?.count) > 0) return;
 
   const email = (process.env.HOUSEHOLD_EMAIL ?? "hello@budgettracker.local").toLowerCase();
   const passwordHash = await hash(process.env.HOUSEHOLD_PASSWORD ?? "Together2026!", 12);
+  const includeDemoData = demoSeedEnabled();
+  console.info(`[db] Seeding fresh database (demo data: ${includeDemoData ? "on" : "off"})`);
 
   await db.transaction(async (tx) => {
     await tx.query("INSERT INTO households (id, name) VALUES ($1, $2)", [HOUSEHOLD_ID, "Our Household"]);
@@ -213,6 +227,8 @@ async function seedDatabase(db: DbClient) {
         [category[0], HOUSEHOLD_ID, category[1], category[2], category[3], category[4]],
       );
     }
+
+    if (!includeDemoData) return;
 
     const baseline = [
       ["income", 85000, "salary", "member-you", "Monthly household income", 2],
