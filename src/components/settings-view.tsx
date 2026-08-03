@@ -6,8 +6,8 @@ import {
 } from "lucide-react";
 import { CategoryManager } from "@/components/category-manager";
 import { DangerZone } from "@/components/danger-zone";
-import { ChevronLeft, ChevronRight, Globe } from "lucide-react";
-import { createContext, FormEvent, useContext, useEffect, useState, useSyncExternalStore } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { createContext, FormEvent, useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { DestructiveActionDialog, UndoToast } from "@/components/destructive-action";
 import { COUNTRIES, countryByCode } from "@/lib/currencies";
 import { currencySymbol, formatCurrency, formatDate, maskedAmount, toBaseAmount, toDisplayAmount } from "@/lib/format";
@@ -353,22 +353,26 @@ export function SettingsView({ data, onSaved, amountsHidden = false, onToggleAmo
     return () => controller.abort();
   }, [selectedCountry.currency, data.baseCurrency]);
   const previewQuote = fxPreview?.target === selectedCountry.currency ? fxPreview : null;
-  const [currencyPending, setCurrencyPending] = useState(false);
-  const [currencyError, setCurrencyError] = useState("");
-  async function submitCurrency(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setCurrencyPending(true); setCurrencyError("");
-    // Only the country/currency changes here; resend the household's existing
-    // budget + reminder emails unchanged to satisfy the settings endpoint.
-    const response = await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ monthlyBudget: data.monthlyBudget, reminderEmail: data.reminderEmail, country }) });
-    const result = await response.json();
-    setCurrencyPending(false);
-    if (!response.ok) { setCurrencyError(result.error ?? "Unable to update currency."); return; }
-    onSaved("Currency updated.");
-  }
+  // Base -> selected-currency rate for the live budget preview. null = still loading.
+  const selectedRate = isBaseCurrency ? 1 : (previewQuote?.available && previewQuote.rate ? previewQuote.rate : null);
+  // The monthly budget is shown in the *currently selected* currency and re-converts
+  // live as the country dropdown changes, so the number always matches the currency.
+  const [budgetInput, setBudgetInput] = useState(() => String(Math.round(toDisplayAmount(data.monthlyBudget) * 100) / 100));
+  const budgetTouched = useRef(false);
+  useEffect(() => {
+    if (budgetTouched.current || selectedRate === null) return;
+    setBudgetInput(String(Math.round(data.monthlyBudget * selectedRate * 100) / 100));
+  }, [selectedRate, data.monthlyBudget]);
   async function submitBudget(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBudgetPending(true); setBudgetError("");
+    event.preventDefault();
+    if (!isBaseCurrency && selectedRate === null) { setBudgetError("Fetching the live exchange rate — try again in a moment."); return; }
+    const amount = Number(budgetInput);
+    if (!Number.isFinite(amount) || amount <= 0) { setBudgetError("Enter a monthly budget above zero."); return; }
+    setBudgetPending(true); setBudgetError("");
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ monthlyBudget: toBaseAmount(Number(form.get("monthlyBudget"))), reminderEmail: form.get("reminderEmail"), country }) });
+    // Convert the entered amount (in the selected currency) back to the base currency.
+    const baseAmount = Math.round((amount / (selectedRate ?? 1)) * 100) / 100;
+    const response = await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ monthlyBudget: baseAmount, reminderEmail: form.get("reminderEmail"), country }) });
     const result = await response.json();
     setBudgetPending(false);
     if (!response.ok) { setBudgetError(result.error ?? "Unable to update budget."); return; }
@@ -491,10 +495,10 @@ export function SettingsView({ data, onSaved, amountsHidden = false, onToggleAmo
             <button className="primary-button settings-submit" disabled={profilePending}><span>{profilePending ? "Saving..." : "Save profile"}</span><ArrowRight size={16} /></button>
           </form>
         </SettingsCard>
-        <SettingsCard section="currency" icon={Globe} title="Currency & region" subtitle="Pick a country — all amounts auto-convert at live rates.">
-          <form onSubmit={submitCurrency} className="modal-form settings-form">
-            <label><span>Country</span>
-              <select value={country} onChange={(event) => setCountry(event.target.value)} aria-label="Country">
+        <SettingsCard section="budget" icon={Wallet} title="Budget & reminders" subtitle="Monthly plan, currency, and bill emails.">
+          <form onSubmit={submitBudget} className="modal-form settings-form">
+            <label><span>Country &amp; currency</span>
+              <select value={country} onChange={(event) => { budgetTouched.current = false; setCountry(event.target.value); }} aria-label="Country and currency">
                 {COUNTRIES.map((option) => <option key={option.code} value={option.code}>{option.flag} {option.name}</option>)}
               </select>
             </label>
@@ -508,20 +512,13 @@ export function SettingsView({ data, onSaved, amountsHidden = false, onToggleAmo
                     : previewQuote === null
                       ? "Fetching live exchange rate..."
                       : previewQuote.available && previewQuote.rate
-                        ? `Live rate: 1 ${data.baseCurrency} = ${previewQuote.rate.toFixed(4)} ${selectedCountry.currency}. Every amount across the app converts automatically at today's market rate${previewQuote.updatedAt ? ` (updated ${new Date(previewQuote.updatedAt).toLocaleDateString("en-PH", { month: "short", day: "numeric" })})` : ""}.`
+                        ? `Live rate: 1 ${data.baseCurrency} = ${previewQuote.rate.toFixed(4)} ${selectedCountry.currency}. Every amount — including your budget below — converts automatically at today's market rate${previewQuote.updatedAt ? ` (updated ${new Date(previewQuote.updatedAt).toLocaleDateString("en-PH", { month: "short", day: "numeric" })})` : ""}.`
                         : "Live rate unavailable right now — amounts will stay in your base currency until it can be fetched."}
                 </p>
               </div>
             </div>
-            <p className="settings-hint">Your records are always stored in {data.baseCurrency}; changing this only converts what you see — no data is rewritten.</p>
-            {currencyError && <p className="form-error">{currencyError}</p>}
-            <button className="primary-button settings-submit" disabled={currencyPending}><span>{currencyPending ? "Saving..." : "Save currency"}</span><ArrowRight size={16} /></button>
-          </form>
-        </SettingsCard>
-
-        <SettingsCard section="budget" icon={Wallet} title="Budget & reminders" subtitle="Monthly plan and where bill emails go.">
-          <form onSubmit={submitBudget} className="modal-form settings-form">
-            <label className="amount-input"><span>Monthly household budget <small>in {data.currency}</small></span><div><b>{currencySymbol(data.currency)}</b><input name="monthlyBudget" type="number" min="1" step="any" defaultValue={toDisplayAmount(data.monthlyBudget)} required /></div></label>
+            <label className="amount-input"><span>Monthly household budget <small>in {selectedCountry.currency}</small></span><div><b>{currencySymbol(selectedCountry.currency)}</b><input name="monthlyBudget" type="number" min="1" step="any" value={budgetInput} onChange={(event) => { budgetTouched.current = true; setBudgetInput(event.target.value); }} required /></div></label>
+            <p className="settings-hint">Your records are always stored in {data.baseCurrency}; picking another currency only converts what you see — no data is rewritten.</p>
             <label><span>Bill reminder emails <small>Separate multiple with commas</small></span><input name="reminderEmail" type="text" defaultValue={data.reminderEmail} placeholder="you@gmail.com, partner@gmail.com" required /></label>
             {budgetError && <p className="form-error">{budgetError}</p>}
             <button className="primary-button settings-submit" disabled={budgetPending}><span>{budgetPending ? "Saving..." : "Save budget"}</span><ArrowRight size={16} /></button>
