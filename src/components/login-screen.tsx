@@ -146,6 +146,7 @@ export function LoginScreen({ demoMode, providers = [], authError }: {
             {mode === "signin" ? "New here? Create your household — it's free" : "Already have a household? Sign in"}
           </button>
           <p className="login-device-note">This device stays signed in securely for 30 days.</p>
+          <div className="login-legal"><a href="/privacy">Privacy</a><a href="/terms">Terms</a></div>
         </motion.div>
       </section>
     </main>

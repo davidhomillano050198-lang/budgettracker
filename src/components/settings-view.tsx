@@ -5,6 +5,7 @@ import {
   MonitorSmartphone, Pencil, PiggyBank, RotateCcw, ShieldCheck, Sun, Tags, Trash2, UserPlus, UserRound, UsersRound, Wallet,
 } from "lucide-react";
 import { CategoryManager } from "@/components/category-manager";
+import { DangerZone } from "@/components/danger-zone";
 import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
 import { DestructiveActionDialog, UndoToast } from "@/components/destructive-action";
 import { COUNTRIES, countryByCode } from "@/lib/currencies";
@@ -529,6 +530,10 @@ export function SettingsView({ data, onSaved, amountsHidden = false, onToggleAmo
             {securityError && <p className="form-error">{securityError}</p>}
             <button className="primary-button settings-submit" disabled={securityPending}><span>{securityPending ? "Saving..." : "Update sign-in"}</span><ArrowRight size={16} /></button>
           </form>
+        </SettingsCard>
+
+        <SettingsCard icon={AlertTriangle} title="Danger zone" subtitle="Permanently delete this household and all its data.">
+          <div className="danger-card-body"><DangerZone householdName={data.householdName} /></div>
         </SettingsCard>
       </div>
 
