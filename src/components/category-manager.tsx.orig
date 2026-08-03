@@ -1,0 +1,173 @@
+"use client";
+
+import { ArrowDownLeft, ArrowUpRight, Check, Pencil, Plus, Tags, Trash2, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { DestructiveActionDialog, UndoToast } from "@/components/destructive-action";
+import type { Category } from "@/lib/types";
+
+const SWATCHES = [
+  "#D77A58", "#5B83A6", "#D6A84B", "#8B78A8", "#D25D64",
+  "#4D9A8B", "#16A368", "#3C8F76", "#7C837F", "#B06AA0",
+];
+
+function ColorSwatches({ value, onChange }: { value: string; onChange: (color: string) => void }) {
+  return (
+    <div className="swatch-row" role="radiogroup" aria-label="Category color">
+      {SWATCHES.map((color) => (
+        <button
+          type="button"
+          key={color}
+          role="radio"
+          aria-checked={value === color}
+          className={`swatch ${value === color ? "selected" : ""}`}
+          style={{ background: color }}
+          onClick={() => onChange(color)}
+          aria-label={`Color ${color}`}
+        >
+          {value === color && <Check size={12} />}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function CategoryManager({ categories, onSaved }: {
+  categories: Category[];
+  onSaved: (message: string) => void;
+}) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editColor, setEditColor] = useState(SWATCHES[0]);
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newKind, setNewKind] = useState<"expense" | "income">("expense");
+  const [newColor, setNewColor] = useState(SWATCHES[0]);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const [deletedCategory, setDeletedCategory] = useState<Category | null>(null);
+
+  const sorted = [...categories].sort((a, b) => (a.kind === b.kind ? a.name.localeCompare(b.name) : a.kind === "expense" ? -1 : 1));
+
+  useEffect(() => {
+    if (!deletedCategory) return;
+    const timer = window.setTimeout(() => setDeletedCategory(null), 10_000);
+    return () => window.clearTimeout(timer);
+  }, [deletedCategory]);
+
+  function startEdit(category: Category) {
+    setError(""); setAdding(false);
+    setEditingId(category.id); setEditName(category.name); setEditColor(category.color);
+  }
+
+  async function saveEdit() {
+    if (pending || !editingId) return;
+    setPending(true); setError("");
+    const response = await fetch(`/api/categories/${editingId}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: editName, color: editColor }),
+    });
+    const result = await response.json();
+    setPending(false);
+    if (!response.ok) { setError(result.error ?? "Unable to update category."); return; }
+    setEditingId(null);
+    onSaved("Category updated.");
+  }
+
+  async function remove(category: Category) {
+    if (pending) return;
+    setPending(true); setError("");
+    const response = await fetch(`/api/categories/${category.id}`, { method: "DELETE" });
+    const result = await response.json().catch(() => ({}));
+    setPending(false);
+    setCategoryToDelete(null);
+    if (!response.ok) { setError(result.error ?? "Unable to delete category."); return; }
+    setDeletedCategory(category);
+    onSaved(`"${category.name}" deleted. Undo is available for 10 seconds.`);
+  }
+
+  async function undoRemove() {
+    if (!deletedCategory || pending) return;
+    const category = deletedCategory;
+    setPending(true); setError("");
+    const response = await fetch("/api/categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: category.name, color: category.color, kind: category.kind }),
+    });
+    const result = await response.json().catch(() => ({}));
+    setPending(false);
+    if (!response.ok) { setError(result.error ?? "Unable to restore category."); return; }
+    setDeletedCategory(null);
+    onSaved(`"${category.name}" restored.`);
+  }
+
+  async function saveNew() {
+    if (pending) return;
+    setPending(true); setError("");
+    const response = await fetch("/api/categories", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName, color: newColor, kind: newKind }),
+    });
+    const result = await response.json();
+    setPending(false);
+    if (!response.ok) { setError(result.error ?? "Unable to add category."); return; }
+    setAdding(false); setNewName(""); setNewColor(SWATCHES[0]); setNewKind("expense");
+    onSaved("Category added.");
+  }
+
+  return (
+    <div className="category-manager">
+      <div className="category-roster">
+        {sorted.map((category) => (
+          <div className="category-manage-row" key={category.id}>
+            {editingId === category.id ? (
+              <div className="category-edit-form">
+                <input value={editName} onChange={(event) => setEditName(event.target.value)} minLength={2} maxLength={30} aria-label="Category name" autoFocus />
+                <ColorSwatches value={editColor} onChange={setEditColor} />
+                <div className="category-edit-actions">
+                  <button type="button" className="primary-button compact-save" onClick={saveEdit} disabled={pending || editName.trim().length < 2}><Check size={14} />Save</button>
+                  <button type="button" className="secondary-button compact" onClick={() => setEditingId(null)}><X size={14} />Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <span className="category-manage-dot" style={{ background: category.color }} />
+                <div className="category-manage-main">
+                  <strong>{category.name}</strong>
+                  <span className={`kind-tag ${category.kind}`}>{category.kind === "income" ? <ArrowDownLeft size={10} /> : <ArrowUpRight size={10} />}{category.kind}</span>
+                </div>
+                <div className="category-manage-actions">
+                  <button type="button" className="icon-button" title={`Edit ${category.name}`} onClick={() => startEdit(category)}><Pencil size={14} /></button>
+                  <button type="button" className="icon-button danger" title={`Delete ${category.name}`} onClick={() => setCategoryToDelete(category)}><Trash2 size={14} /></button>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {adding ? (
+        <div className="category-edit-form category-add-form">
+          <input value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Category name" minLength={2} maxLength={30} aria-label="New category name" autoFocus />
+          <div className="segmented-control kind-toggle">
+            <button type="button" className={newKind === "expense" ? "active" : ""} onClick={() => setNewKind("expense")}><ArrowUpRight size={14} />Expense</button>
+            <button type="button" className={newKind === "income" ? "active" : ""} onClick={() => setNewKind("income")}><ArrowDownLeft size={14} />Income</button>
+          </div>
+          <ColorSwatches value={newColor} onChange={setNewColor} />
+          <div className="category-edit-actions">
+            <button type="button" className="primary-button compact-save" onClick={saveNew} disabled={pending || newName.trim().length < 2}><Check size={14} />Add category</button>
+            <button type="button" className="secondary-button compact" onClick={() => { setAdding(false); setError(""); }}><X size={14} />Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" className="category-add" onClick={() => { setAdding(true); setEditingId(null); setError(""); }}>
+          <Plus size={15} /><span>Add category</span>
+        </button>
+      )}
+
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <p className="settings-hint"><Tags size={12} /> Categories in use by transactions or bills can be renamed but not deleted.</p>
+    </div>
+  );
+}
