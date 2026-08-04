@@ -2,14 +2,38 @@ import { Resend } from "resend";
 import { NextResponse } from "next/server";
 import { getPendingBillReminders, recordReminder } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
-
-const escapeHtml = (value: string) =>
-  value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]!);
+import { renderBillReminderEmail } from "@/lib/email";
 
 export async function GET(request: Request) {
   const secret = request.headers.get("authorization");
   if (!process.env.CRON_SECRET || secret !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Absolute origin so the hosted logo + CTA resolve inside email clients.
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "budgettracker-five-zeta.vercel.app";
+  const base = process.env.APP_BASE_URL ?? `${host.startsWith("localhost") ? "http" : "https"}://${host}`;
+  const url = new URL(request.url);
+  const from = process.env.REMINDER_FROM_EMAIL ?? "BudgetTracker <reminders@budgettracker.app>";
+
+  // Test mode: ?test=1&to=addr sends one sample reminder using the real template
+  // (verifies delivery + branding without needing a due bill). Still auth-gated.
+  const testTo = url.searchParams.get("test") ? url.searchParams.get("to") : null;
+  if (testTo) {
+    if (!process.env.RESEND_API_KEY) {
+      return NextResponse.json({ error: "RESEND_API_KEY not set" }, { status: 400 });
+    }
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const recipients = testTo.split(/[,;]+/).map((item) => item.trim()).filter(Boolean);
+    const html = renderBillReminderEmail({
+      name: "Condo dues", amount: formatCurrency(2800), dueCopy: "due in 3 days",
+      dueDate: "2026-08-07", recurrence: "Monthly", base,
+    });
+    const result = await resend.emails.send({
+      from, to: recipients, subject: "Condo dues is due in 3 days",
+      html,
+    });
+    return NextResponse.json({ test: true, to: recipients, id: result.data?.id ?? null, error: result.error ?? null });
   }
 
   const reminders = await getPendingBillReminders();
@@ -18,28 +42,22 @@ export async function GET(request: Request) {
   }
 
   const resend = new Resend(process.env.RESEND_API_KEY);
-  // Absolute origin so the hosted logo resolves inside email clients.
-  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "budgettracker-five-zeta.vercel.app";
-  const base = process.env.APP_BASE_URL ?? `${host.startsWith("localhost") ? "http" : "https"}://${host}`;
   const sent: string[] = [];
   for (const bill of reminders) {
     const dueCopy = bill.reminderDay === 0 ? "due today" : `due in ${bill.reminderDay} days`;
     // reminder_email may hold several recipients ("a@x.com, b@y.com").
     const recipients = bill.reminder_email.split(/[,;]+/).map((item) => item.trim()).filter(Boolean);
     const result = await resend.emails.send({
-      from: process.env.REMINDER_FROM_EMAIL ?? "BudgetTracker <reminders@budgettracker.app>",
+      from,
       to: recipients,
       subject: `${bill.name} is ${dueCopy}`,
-      html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#1d2924">
-        <div style="background:#101712;border-radius:14px;padding:20px;text-align:center;margin-bottom:20px">
-          <img src="${base}/brand-logo.png" alt="Budget Tracker" width="190" style="display:inline-block;width:190px;max-width:70%;height:auto" />
-        </div>
-        <h1 style="font-size:24px">Bill reminder</h1>
-        <p><strong>${escapeHtml(bill.name)}</strong> is ${dueCopy}.</p>
-        <p style="font-size:32px;font-weight:700;margin:24px 0">${formatCurrency(bill.amount)}</p>
-        <p>Due date: ${escapeHtml(bill.dueDate)}</p>
-        <p style="color:#6a746f">Open BudgetTracker to review or mark this bill as paid.</p>
-      </div>`,
+      html: renderBillReminderEmail({
+        name: bill.name,
+        amount: formatCurrency(bill.amount),
+        dueCopy,
+        dueDate: bill.dueDate,
+        base,
+      }),
     });
     if (!result.error) {
       await recordReminder(bill.id, bill.reminderDay, bill.reminder_email);
