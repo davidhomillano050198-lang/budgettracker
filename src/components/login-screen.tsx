@@ -73,8 +73,9 @@ export function LoginScreen({ demoMode, providers = [], authError }: {
   return (
     <main className="login-shell">
       <section className="login-brand-panel">
-        <motion.div className="login-hero-card" initial={{ opacity: 0, scale: 0.965 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.65, ease: [0.2, 0.7, 0.3, 1] }}>
-          <img src="/brand-hero.png" alt="Budget Tracker" className="login-hero-img" />
+        <motion.div className="login-hero" initial={{ opacity: 0, scale: 0.965 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.65, ease: [0.2, 0.7, 0.3, 1] }}>
+          <img className="brand-logo for-light login-hero-logo" src="/brand-logo-ink.png" alt="Budget Tracker" />
+          <img className="brand-logo for-dark login-hero-logo" src="/brand-logo.png" alt="Budget Tracker" />
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55 }} className="login-brand-copy">
           <p className="eyebrow">Household finance</p>
