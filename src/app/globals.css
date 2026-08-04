@@ -45,11 +45,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .login-shell { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(420px, .92fr); background: #f8f9f6; }
 .login-brand-panel { position: relative; min-height: 100vh; padding: 42px clamp(42px, 6vw, 92px); display: flex; flex-direction: column; overflow: hidden; background: #eef2ec; border-right: 1px solid #dfe5df; }
 .login-brand-panel::after { content: ""; position: absolute; inset: auto -8% -23% 16%; height: 48%; background: #dfe7df; border-radius: 50%; opacity: .64; }
-.login-hero-card { position: relative; z-index: 1; width: min(342px, 80%); border-radius: 20px; overflow: hidden; box-shadow: 0 26px 64px -30px rgba(11, 122, 76, .6); }
-.login-hero-img { display: block; width: 100%; height: auto; }
-.login-hero-card::after { content: ""; position: absolute; inset: 0; border-radius: 20px; pointer-events: none; animation: heroGlow 3.8s ease-in-out infinite; }
-@keyframes heroGlow { 0%, 100% { box-shadow: 0 0 0 1px rgba(18, 162, 102, .22) inset, 0 0 24px -8px rgba(18, 162, 102, .4); } 50% { box-shadow: 0 0 0 1px rgba(18, 162, 102, .5) inset, 0 0 50px 2px rgba(18, 162, 102, .55); } }
-@media (prefers-reduced-motion: reduce) { .login-hero-card::after { animation: none; } }
+.login-hero { position: relative; z-index: 1; width: min(360px, 82%); }
+.login-hero-logo { width: 100%; height: auto; }
+.login-hero::before { content: ""; position: absolute; left: 4%; top: 0; width: 48%; padding-bottom: 48%; border-radius: 50%; background: radial-gradient(circle, rgba(18, 162, 102, .5), transparent 70%); filter: blur(26px); z-index: -1; animation: heroPulse 3.8s ease-in-out infinite; }
+@keyframes heroPulse { 0%, 100% { opacity: .45; transform: scale(1); } 50% { opacity: .85; transform: scale(1.1); } }
+@media (prefers-reduced-motion: reduce) { .login-hero::before { animation: none; } }
 .brand-logo { display: block; width: auto; }
 .brand-logo.for-dark { display: none; }
 html[data-theme="dark"] .brand-logo.for-light { display: none; }
