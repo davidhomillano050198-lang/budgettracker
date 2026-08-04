@@ -10,6 +10,6 @@ export async function PUT(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid profile" }, { status: 400 });
   }
-  await updateProfile(session.householdId, parsed.data.householdName, parsed.data.members);
+  await updateProfile(session.householdId, parsed.data.householdName, parsed.data.members, parsed.data.avatar);
   return NextResponse.json({ ok: true });
 }

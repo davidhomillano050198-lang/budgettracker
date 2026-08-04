@@ -1,13 +1,13 @@
 "use client";
 
 import {
-  AlertTriangle, ArrowDownToLine, ArrowRight, ArrowUpFromLine, Check, Eye, EyeOff, History, KeyRound, LockKeyhole, Moon,
+  AlertTriangle, ArrowDownToLine, ArrowRight, ArrowUpFromLine, Camera, Check, Eye, EyeOff, History, KeyRound, LockKeyhole, Moon,
   MonitorSmartphone, Pencil, PiggyBank, RotateCcw, ShieldCheck, Sun, Tags, Trash2, UserPlus, UserRound, UsersRound, Wallet,
 } from "lucide-react";
 import { CategoryManager } from "@/components/category-manager";
 import { DangerZone } from "@/components/danger-zone";
 import { ChevronLeft, ChevronRight, Globe } from "lucide-react";
-import { createContext, FormEvent, useContext, useEffect, useState, useSyncExternalStore } from "react";
+import { ChangeEvent, createContext, FormEvent, useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { DestructiveActionDialog, UndoToast } from "@/components/destructive-action";
 import { COUNTRIES, countryByCode } from "@/lib/currencies";
 import { currencySymbol, formatCurrency, formatDate, maskedAmount, toBaseAmount, toDisplayAmount } from "@/lib/format";
@@ -207,6 +207,38 @@ export function SettingsView({ data, onSaved, amountsHidden = false, onToggleAmo
   const [profilePending, setProfilePending] = useState(false);
   const [profileMembers, setProfileMembers] = useState(data.members);
   const [profileError, setProfileError] = useState("");
+  const [avatarDraft, setAvatarDraft] = useState<string>(data.avatar ?? "");
+  const avatarFileRef = useRef<HTMLInputElement>(null);
+  const AVATAR_EMOJIS = ["🏠", "💰", "🌱", "💚", "🍀", "⭐", "🔥", "🐱", "🐶", "☕", "👨‍👩‍👧", "🧾"];
+  async function onAvatarFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setProfileError("");
+    if (!file.type.startsWith("image/")) { setProfileError("Please choose an image file."); return; }
+    if (file.size > 8 * 1024 * 1024) { setProfileError("That image is too large (max 8MB)."); return; }
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const img = new window.Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          const size = 256;
+          const canvas = document.createElement("canvas");
+          canvas.width = size; canvas.height = size;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) { reject(new Error("no ctx")); return; }
+          const scale = Math.max(size / img.width, size / img.height);
+          const w = img.width * scale, h = img.height * scale;
+          ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+          URL.revokeObjectURL(url);
+          resolve(canvas.toDataURL("image/jpeg", 0.85));
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("bad image")); };
+        img.src = url;
+      });
+      setAvatarDraft(dataUrl);
+    } catch { setProfileError("Could not read that image — try another."); }
+  }
   const [memberEditor, setMemberEditor] = useState<{ mode: "add" | "edit"; member: Member } | null>(null);
   const [memberToRemove, setMemberToRemove] = useState<Member | null>(null);
   const [removedMember, setRemovedMember] = useState<{ member: Member; index: number } | null>(null);
@@ -279,7 +311,7 @@ export function SettingsView({ data, onSaved, amountsHidden = false, onToggleAmo
       id: member.id, name: member.name.trim(), relationship: member.relationship, budgetRole: member.budgetRole,
       email: member.email, monthlyContribution: member.monthlyContribution,
     }));
-    const response = await fetch("/api/settings/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ householdName: form.get("householdName"), members }) });
+    const response = await fetch("/api/settings/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ householdName: form.get("householdName"), members, avatar: avatarDraft }) });
     const result = await response.json();
     setProfilePending(false);
     if (!response.ok) { setProfileError(result.error ?? "Unable to update profile."); return; }
@@ -463,6 +495,26 @@ export function SettingsView({ data, onSaved, amountsHidden = false, onToggleAmo
 
         <SettingsCard section="profile" icon={UsersRound} title="Household profile" subtitle="Names, members, relationships, and contribution goals.">
           <form onSubmit={submitProfile} className="modal-form settings-form">
+            <div className="avatar-picker">
+              {avatarDraft && avatarDraft.startsWith("data:")
+                ? <div className="avatar-preview has-image"><img src={avatarDraft} alt="Household avatar" /></div>
+                : avatarDraft
+                  ? <div className="avatar-preview is-emoji">{avatarDraft}</div>
+                  : <div className="avatar-preview">{(data.householdName || "BT").slice(0, 2).toUpperCase()}</div>}
+              <div className="avatar-picker-body">
+                <span className="avatar-picker-label">Household photo or avatar</span>
+                <div className="avatar-actions">
+                  <button type="button" className="secondary-button compact" onClick={() => avatarFileRef.current?.click()}><Camera size={14} />Upload photo</button>
+                  {avatarDraft && <button type="button" className="text-button" onClick={() => setAvatarDraft("")}>Remove</button>}
+                </div>
+                <div className="avatar-emojis">
+                  {AVATAR_EMOJIS.map((emoji) => (
+                    <button type="button" key={emoji} className={`avatar-emoji ${avatarDraft === emoji ? "active" : ""}`} onClick={() => setAvatarDraft(emoji)} aria-label={`Use ${emoji} avatar`}>{emoji}</button>
+                  ))}
+                </div>
+                <input ref={avatarFileRef} type="file" accept="image/*" hidden onChange={onAvatarFile} />
+              </div>
+            </div>
             <label><span>Household name</span><input name="householdName" defaultValue={data.householdName} minLength={2} maxLength={60} required /></label>
             <div className="member-editor">
               <div className="member-editor-head"><div><strong>Household members</strong><span>Relationship, planning role, activity, and contribution goals.</span></div><small>{profileMembers.length} of 12</small></div>

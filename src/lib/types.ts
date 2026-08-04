@@ -115,6 +115,7 @@ export type SavingsActivity = {
 
 export type DashboardData = {
   householdName: string;
+  avatar?: string | null;
   currency: string;
   baseCurrency: string;
   /** Live multiplier from baseCurrency to currency (1 when identical). */

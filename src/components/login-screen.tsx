@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { ArrowRight, Eye, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { motion } from "motion/react";
@@ -74,7 +73,9 @@ export function LoginScreen({ demoMode, providers = [], authError }: {
   return (
     <main className="login-shell">
       <section className="login-brand-panel">
-        <Image src="/budgettracker-logo.svg" alt="BudgetTracker" width={292} height={64} priority className="login-logo" />
+        <motion.div className="login-hero-card" initial={{ opacity: 0, scale: 0.965 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.65, ease: [0.2, 0.7, 0.3, 1] }}>
+          <img src="/brand-hero.png" alt="Budget Tracker" className="login-hero-img" />
+        </motion.div>
         <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55 }} className="login-brand-copy">
           <p className="eyebrow">Household finance</p>
           <h1>One calm view of your life together.</h1>

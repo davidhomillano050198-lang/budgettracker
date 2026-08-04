@@ -16,7 +16,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "BudgetTracker | Household finance",
   description: "A private household workspace for budgets, spending, income, and bill reminders.",
-  icons: { icon: "/budgettracker-mark.svg" },
+  icons: {
+    icon: [
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-48.png", sizes: "48x48", type: "image/png" },
+      { url: "/brand-mark-ink-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-icon.png",
+  },
 };
 
 export const viewport: Viewport = {
