@@ -80,6 +80,8 @@ export const categoryUpdateSchema = z.object({
 
 export const profileSchema = z.object({
   householdName: z.string().trim().min(2).max(60),
+  // Household avatar: a small image data URL, a single emoji, or "" to clear.
+  avatar: z.string().max(900_000, "That image is too large — pick a smaller one.").optional(),
   members: z.array(z.object({
     id: z.string().min(1).max(80).regex(/^[a-zA-Z0-9-]+$/, "Invalid member ID"),
     name: z.string().trim().min(1).max(40),

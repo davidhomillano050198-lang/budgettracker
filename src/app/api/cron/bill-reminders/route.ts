@@ -18,6 +18,9 @@ export async function GET(request: Request) {
   }
 
   const resend = new Resend(process.env.RESEND_API_KEY);
+  // Absolute origin so the hosted logo resolves inside email clients.
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "budgettracker-five-zeta.vercel.app";
+  const base = process.env.APP_BASE_URL ?? `${host.startsWith("localhost") ? "http" : "https"}://${host}`;
   const sent: string[] = [];
   for (const bill of reminders) {
     const dueCopy = bill.reminderDay === 0 ? "due today" : `due in ${bill.reminderDay} days`;
@@ -28,6 +31,9 @@ export async function GET(request: Request) {
       to: recipients,
       subject: `${bill.name} is ${dueCopy}`,
       html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#1d2924">
+        <div style="background:#101712;border-radius:14px;padding:20px;text-align:center;margin-bottom:20px">
+          <img src="${base}/brand-logo.png" alt="Budget Tracker" width="190" style="display:inline-block;width:190px;max-width:70%;height:auto" />
+        </div>
         <h1 style="font-size:24px">Bill reminder</h1>
         <p><strong>${escapeHtml(bill.name)}</strong> is ${dueCopy}.</p>
         <p style="font-size:32px;font-weight:700;margin:24px 0">${formatCurrency(bill.amount)}</p>

@@ -366,6 +366,7 @@ async function initializeDatabase(): Promise<DbClient> {
   await db.exec("ALTER TABLE household_settings ADD COLUMN IF NOT EXISTS country TEXT NOT NULL DEFAULT 'PH';");
   await db.exec("ALTER TABLE household_settings ADD COLUMN IF NOT EXISTS base_currency TEXT NOT NULL DEFAULT 'PHP';");
   await db.exec("ALTER TABLE household_settings ADD COLUMN IF NOT EXISTS savings_goal NUMERIC(14,2) NOT NULL DEFAULT 0;");
+  await db.exec("ALTER TABLE household_settings ADD COLUMN IF NOT EXISTS avatar TEXT;");
   await db.exec("ALTER TABLE categories ADD COLUMN IF NOT EXISTS budget_limit NUMERIC(14,2);");
   await db.exec("ALTER TABLE credentials ADD COLUMN IF NOT EXISTS password_set BOOLEAN NOT NULL DEFAULT TRUE;");
   await db.exec("ALTER TABLE member_profiles ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE;");
@@ -405,9 +406,9 @@ export async function getDashboardData(householdId: string, memberId?: string): 
   const scope = [householdId, memberId ?? null];
 
   const settingsPromise = db.query<{
-    name: string; monthly_budget: string; currency: string; reminder_email: string; country: string; base_currency: string; savings_goal: string;
+    name: string; monthly_budget: string; currency: string; reminder_email: string; country: string; base_currency: string; savings_goal: string; avatar: string | null;
   }>(
-    `SELECT h.name, s.monthly_budget, s.currency, s.reminder_email, s.country, s.base_currency, s.savings_goal
+    `SELECT h.name, s.monthly_budget, s.currency, s.reminder_email, s.country, s.base_currency, s.savings_goal, s.avatar
      FROM households h JOIN household_settings s ON s.household_id = h.id WHERE h.id = $1`,
     [householdId],
   );
@@ -550,6 +551,7 @@ export async function getDashboardData(householdId: string, memberId?: string): 
 
   return {
     householdName: settings.rows[0].name,
+    avatar: settings.rows[0].avatar ?? null,
     currency: displayCurrency,
     baseCurrency,
     fxRate,
@@ -1009,10 +1011,14 @@ export async function updateProfile(householdId: string, householdName: string, 
   id: string; name: string;
   relationship: MemberRelationship; budgetRole: MemberBudgetRole;
   email: string; monthlyContribution: number;
-}>) {
+}>, avatar?: string | null) {
   const db = await getDb();
   await db.transaction(async (tx) => {
     await tx.query("UPDATE households SET name = $1 WHERE id = $2", [householdName, householdId]);
+    if (avatar !== undefined) {
+      // null/empty clears the avatar (falls back to initials); otherwise a data URL or emoji.
+      await tx.query("UPDATE household_settings SET avatar = $1 WHERE household_id = $2", [avatar || null, householdId]);
+    }
     const existingMembers = await tx.query<{ id: string }>(
       "SELECT id FROM member_profiles WHERE household_id = $1",
       [householdId],

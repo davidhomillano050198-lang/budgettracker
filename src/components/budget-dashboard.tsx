@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import dynamic from "next/dynamic";
 import {
   ArrowDownLeft, ArrowRight, ArrowUpRight, Banknote, BellRing, CalendarDays, Check, ChevronDown, ChevronRight, ChevronUp,
@@ -90,6 +89,13 @@ function AnimatedAmount({ value, currency, masked }: { value: number; currency: 
   if (masked) return <>{maskedAmount(currency)}</>;
   if (reduceMotion) return <>{formatCurrency(value, currency)}</>;
   return <>{display}</>;
+}
+
+function HouseholdChip({ avatar, name, live = false }: { avatar?: string | null; name: string; live?: boolean }) {
+  const cls = `household-avatar${live ? " live" : ""}`;
+  if (avatar && avatar.startsWith("data:")) return <div className={`${cls} has-image`}><img src={avatar} alt="" /></div>;
+  if (avatar) return <div className={`${cls} is-emoji`}>{avatar}</div>;
+  return <div className={cls}>{(name || "BT").slice(0, 2).toUpperCase()}</div>;
 }
 
 function SectionHeading({ eyebrow, title, action }: { eyebrow?: string; title: string; action?: React.ReactNode }) {
@@ -535,7 +541,7 @@ export function BudgetDashboard({ initialData, sessionEmail, initialPrivacy = fa
   return (
     <div className="app-shell">
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
-        <div className="sidebar-top"><Image src="/budgettracker-logo.svg" alt="BudgetTracker" width={220} height={48} priority /><button className="icon-button sidebar-close" onClick={() => setSidebarOpen(false)} title="Close menu"><X size={19} /></button></div>
+        <div className="sidebar-top"><span className="brand-lockup"><img className="brand-logo for-light" src="/brand-logo-ink.png" alt="Budget Tracker" /><img className="brand-logo for-dark" src="/brand-logo.png" alt="Budget Tracker" /></span><button className="icon-button sidebar-close" onClick={() => setSidebarOpen(false)} title="Close menu"><X size={19} /></button></div>
         <nav>{navItems.map(({ id, label, icon: Icon }) => <button key={id} className={view === id ? "active" : ""} onClick={() => { setView(id); setSidebarOpen(false); }}><Icon size={18} /><span>{label}</span>{view === id && <motion.i layoutId="nav-active" />}</button>)}</nav>
         <button className="primary-button sidebar-add" onClick={openAddTransaction}><Plus size={17} /><span>Add transaction</span></button>
         <div className="sidebar-bottom">
@@ -544,7 +550,7 @@ export function BudgetDashboard({ initialData, sessionEmail, initialPrivacy = fa
               <>
                 <button className="profile-menu-overlay" aria-label="Close menu" onClick={() => setProfileMenuOpen(false)} />
                 <motion.div className="profile-menu" role="menu" initial={{ opacity: 0, y: 8, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: .98 }} transition={{ duration: .16 }}>
-                  <div className="profile-menu-head"><div className="household-avatar">{(data.householdName || "BT").slice(0, 2).toUpperCase()}</div><div><strong>{data.householdName}</strong><span>{sessionEmail}</span></div></div>
+                  <div className="profile-menu-head"><HouseholdChip avatar={data.avatar} name={data.householdName} /><div><strong>{data.householdName}</strong><span>{sessionEmail}</span></div></div>
                   <button role="menuitem" className="profile-menu-item" onClick={() => { setView("settings"); setProfileMenuOpen(false); setSidebarOpen(false); }}><Settings2 size={16} />Settings</button>
                   <button role="menuitem" className="profile-menu-item danger" onClick={logout}><LogOut size={16} />Log out</button>
                 </motion.div>
@@ -552,7 +558,7 @@ export function BudgetDashboard({ initialData, sessionEmail, initialPrivacy = fa
             )}
           </AnimatePresence>
           <button className="profile-trigger" onClick={() => setProfileMenuOpen((open) => !open)} aria-haspopup="menu" aria-expanded={profileMenuOpen}>
-            <div className="household-avatar">{(data.householdName || "BT").slice(0, 2).toUpperCase()}</div>
+            <HouseholdChip avatar={data.avatar} name={data.householdName} live />
             <div className="profile-trigger-text"><strong>{data.householdName}</strong><span>{sessionEmail}</span></div>
             <ChevronDown size={16} className={`profile-caret ${profileMenuOpen ? "open" : ""}`} />
           </button>
