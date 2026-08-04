@@ -159,8 +159,18 @@ html[data-theme="dark"] .danger-button { background: rgba(201, 77, 85, .14); col
 .app-shell { min-height: 100vh; background: var(--canvas); }
 .sidebar { position: fixed; z-index: 30; inset: 0 auto 0 0; width: 244px; padding: 24px 18px 18px; display: flex; flex-direction: column; background: #f8f9f6; border-right: 1px solid var(--line); }
 .sidebar-top { height: 48px; padding: 0 7px; display: flex; align-items: center; justify-content: space-between; }
-.sidebar-top .brand-lockup { display: inline-flex; align-items: center; }
-.sidebar-top .brand-logo { height: 30px; }
+.sidebar-top .brand-lockup { display: inline-flex; align-items: center; gap: 10px; }
+.brand-wordmark { font-size: 17px; font-weight: 700; letter-spacing: -.02em; color: var(--ink); white-space: nowrap; line-height: 1; }
+.brand-wordmark span { color: var(--green-deep); }
+.brand-mark-anim { position: relative; width: 34px; height: 34px; flex: none; }
+.brand-mark-img { position: relative; z-index: 1; width: 100%; height: 100%; object-fit: contain; }
+.brand-mark-anim::before { content: ""; position: absolute; inset: -4px; border-radius: 50%; background: conic-gradient(from 0deg, transparent 0deg 248deg, rgba(34, 184, 119, .9) 318deg, transparent 360deg); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px)); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px)); animation: markSpin 2.6s linear infinite; z-index: 0; }
+.brand-mark-anim::after { content: ""; position: absolute; inset: -2px; border-radius: 50%; animation: markGlow 3s ease-in-out infinite; z-index: 0; }
+.brand-mark-sheen { position: absolute; inset: 0; z-index: 2; pointer-events: none; -webkit-mask: url(/brand-emblem.png) center / contain no-repeat; mask: url(/brand-emblem.png) center / contain no-repeat; background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, .9) 50%, transparent 62%); background-size: 300% 100%; background-repeat: no-repeat; animation: markSheen 3.4s ease-in-out infinite; mix-blend-mode: screen; }
+@keyframes markSpin { to { transform: rotate(360deg); } }
+@keyframes markGlow { 0%, 100% { box-shadow: 0 0 8px -3px rgba(34, 184, 119, .35); } 50% { box-shadow: 0 0 17px 0 rgba(34, 184, 119, .6); } }
+@keyframes markSheen { 0% { background-position: 180% 0; } 55%, 100% { background-position: -120% 0; } }
+@media (prefers-reduced-motion: reduce) { .brand-mark-anim::before, .brand-mark-anim::after, .brand-mark-sheen { animation: none; } }
 .sidebar-close { display: none; }
 .sidebar nav { margin-top: 34px; display: grid; gap: 5px; }
 .sidebar nav button { position: relative; width: 100%; height: 43px; padding: 0 12px; border: 0; border-radius: 7px; display: flex; align-items: center; gap: 12px; background: transparent; color: #65706a; font-size: 13px; font-weight: 540; cursor: pointer; text-align: left; }

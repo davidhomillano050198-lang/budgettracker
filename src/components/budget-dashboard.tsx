@@ -541,7 +541,7 @@ export function BudgetDashboard({ initialData, sessionEmail, initialPrivacy = fa
   return (
     <div className="app-shell">
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
-        <div className="sidebar-top"><span className="brand-lockup"><img className="brand-logo for-light" src="/brand-logo-ink.png" alt="Budget Tracker" /><img className="brand-logo for-dark" src="/brand-logo.png" alt="Budget Tracker" /></span><button className="icon-button sidebar-close" onClick={() => setSidebarOpen(false)} title="Close menu"><X size={19} /></button></div>
+        <div className="sidebar-top"><span className="brand-lockup"><span className="brand-mark-anim"><img className="brand-mark-img" src="/brand-emblem.png" alt="" /><span className="brand-mark-sheen" aria-hidden="true" /></span><span className="brand-wordmark">Budget <span>Tracker</span></span></span><button className="icon-button sidebar-close" onClick={() => setSidebarOpen(false)} title="Close menu"><X size={19} /></button></div>
         <nav>{navItems.map(({ id, label, icon: Icon }) => <button key={id} className={view === id ? "active" : ""} onClick={() => { setView(id); setSidebarOpen(false); }}><Icon size={18} /><span>{label}</span>{view === id && <motion.i layoutId="nav-active" />}</button>)}</nav>
         <button className="primary-button sidebar-add" onClick={openAddTransaction}><Plus size={17} /><span>Add transaction</span></button>
         <div className="sidebar-bottom">
