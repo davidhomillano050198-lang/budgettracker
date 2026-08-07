@@ -13,9 +13,25 @@ export type Session = {
 
 type SessionClaims = JWTPayload & Session & { tokenType: "access" | "refresh" };
 
-const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET ?? "budgettracker-local-development-secret-change-before-production",
-);
+const DEV_JWT_FALLBACK = "budgettracker-local-development-secret-change-before-production";
+
+let cachedSecret: Uint8Array | null = null;
+
+// Resolved lazily (not at module load) so `next build` — which runs with
+// NODE_ENV=production — never crashes just from importing this module. The
+// guard still fails fast at the first sign/verify at runtime.
+function secretKey(): Uint8Array {
+  if (cachedSecret) return cachedSecret;
+  const configured = process.env.JWT_SECRET;
+  // In production the session-signing key MUST be a real secret. Falling back
+  // to the public dev value would let anyone forge session cookies for any
+  // household, so refuse to sign/verify with it.
+  if (process.env.NODE_ENV === "production" && (!configured || configured === DEV_JWT_FALLBACK)) {
+    throw new Error("JWT_SECRET must be set to a strong secret in production (the dev fallback is public).");
+  }
+  cachedSecret = new TextEncoder().encode(configured ?? DEV_JWT_FALLBACK);
+  return cachedSecret;
+}
 
 async function signToken(session: Session, tokenType: "access" | "refresh", expiresIn: number) {
   return new SignJWT({ ...session, tokenType })
@@ -23,13 +39,13 @@ async function signToken(session: Session, tokenType: "access" | "refresh", expi
     .setSubject(session.householdId)
     .setIssuedAt()
     .setExpirationTime(`${expiresIn}s`)
-    .sign(secret);
+    .sign(secretKey());
 }
 
 async function verifyToken(token: string | undefined, tokenType: "access" | "refresh") {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
+    const { payload } = await jwtVerify(token, secretKey(), { algorithms: ["HS256"] });
     const claims = payload as SessionClaims;
     if (claims.tokenType !== tokenType || !claims.householdId || !claims.email) return null;
     return { householdId: claims.householdId, email: claims.email } satisfies Session;
