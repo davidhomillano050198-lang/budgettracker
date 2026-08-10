@@ -12,6 +12,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 import { BudgetAllocations } from "@/components/budget-allocations";
 import { DestructiveActionDialog, UndoToast } from "@/components/destructive-action";
 import { HelpGuide } from "@/components/help-guide";
+import { OnboardingWizard } from "@/components/onboarding-wizard";
 import { currencyUnit } from "@/lib/currencies";
 import { currencySymbol, formatCurrency, formatDate, formatRelativeDueDate, maskedAmount, setDisplayFxRate, toBaseAmount, toDisplayAmount } from "@/lib/format";
 import type { BillItem, Category, DashboardData, HealthStatus, Member, PaymentMethod, TransactionItem } from "@/lib/types";
@@ -541,17 +542,22 @@ export function BudgetDashboard({ initialData, sessionEmail, initialPrivacy = fa
   // so brand-new sign-ups always get walked through the app. Deferred to a
   // timeout so we don't setState synchronously inside the effect.
   useEffect(() => {
+    if (!data.onboarded) return; // brand-new users get the full setup wizard instead
     let seen = true;
     try { seen = Boolean(localStorage.getItem(`bt-guide-v1-${sessionEmail}`)); } catch { seen = true; }
     if (seen) return;
     const timer = window.setTimeout(() => { setHelpFirstTime(true); setHelpOpen(true); }, 0);
     return () => window.clearTimeout(timer);
-  }, [sessionEmail]);
+  }, [sessionEmail, data.onboarded]);
   const openHelp = () => { setHelpFirstTime(false); setHelpOpen(true); };
   const closeHelp = () => { setHelpOpen(false); try { localStorage.setItem(`bt-guide-v1-${sessionEmail}`, "1"); } catch {} };
   const title = navItems.find((item) => item.id === view)?.label ?? "Overview"; const StatusIcon = statusIcon[data.status];
   const trendCeiling = Math.max(1, ...data.trend.flatMap((point) => [point.income, point.expense]));
   const nextBill = data.bills[0];
+
+  if (!data.onboarded) {
+    return <OnboardingWizard sessionEmail={sessionEmail} onComplete={() => { refresh(); }} />;
+  }
 
   return (
     <div className="app-shell">

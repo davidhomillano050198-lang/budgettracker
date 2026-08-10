@@ -109,3 +109,20 @@ export const securitySchema = z.object({
 }).refine((value) => value.newEmail || value.newPassword || value.allowedEmails, {
   message: "Nothing to update",
 });
+
+export const onboardingSchema = z.object({
+  firstName: z.string().trim().min(1, "First name is required").max(40),
+  lastName: z.string().trim().min(1, "Last name is required").max(40),
+  occupation: z.string().trim().max(60).optional(),
+  householdName: z.string().trim().min(2, "Give your household a name").max(60),
+  country: z.string().length(2).transform((value) => value.toUpperCase()),
+  monthlyBudget: z.coerce.number().positive("Enter a monthly budget above zero").max(100_000_000),
+  currentSavings: z.coerce.number().min(0).max(100_000_000).optional(),
+  savingsGoal: z.coerce.number().min(0).max(100_000_000).optional(),
+  reminderEmail: z.string().email().transform((value) => value.trim().toLowerCase()).optional(),
+  partner: z.object({
+    firstName: z.string().trim().min(1, "Partner first name is required").max(40),
+    lastName: z.string().trim().min(1, "Partner last name is required").max(40),
+    occupation: z.string().trim().max(60).optional(),
+  }).optional(),
+});
