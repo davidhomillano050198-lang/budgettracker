@@ -18,17 +18,16 @@ export async function register(): Promise<void> {
 type ErrorRequest = { path?: string; method?: string; headers?: Record<string, string> };
 type ErrorContext = { routerKind?: string; routePath?: string; routeType?: string };
 
-export function onRequestError(error: unknown, request: ErrorRequest, context: ErrorContext): void {
-  const payload = {
+export async function onRequestError(error: unknown, request: ErrorRequest, context: ErrorContext): Promise<void> {
+  const meta = { method: request?.method, path: request?.path, routerKind: context?.routerKind, routePath: context?.routePath };
+  console.error("[request-error]", JSON.stringify({
     level: "error",
     message: error instanceof Error ? error.message : String(error),
     stack: error instanceof Error ? error.stack : undefined,
-    method: request?.method,
-    path: request?.path,
-    routerKind: context?.routerKind,
-    routePath: context?.routePath,
+    ...meta,
     at: new Date().toISOString(),
-  };
-  console.error("[request-error]", JSON.stringify(payload));
-  // TODO(SENTRY_DSN): when configured, forward `payload` to Sentry here.
+  }));
+  // Forward to Sentry when SENTRY_DSN is configured (no-op otherwise).
+  const { captureServerError } = await import("@/lib/sentry");
+  await captureServerError(error, meta);
 }
