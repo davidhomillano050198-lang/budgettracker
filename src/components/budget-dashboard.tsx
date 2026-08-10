@@ -4,13 +4,14 @@ import dynamic from "next/dynamic";
 import {
   ArrowDownLeft, ArrowRight, ArrowUpRight, Banknote, BellRing, CalendarDays, Check, ChevronDown, ChevronRight, ChevronUp,
   CircleDollarSign, Clock3, CreditCard, Download, Gauge, Landmark, LayoutDashboard, LogOut,
-  Mail, Menu, Pencil, Plus, ReceiptText, Search, Settings2, Smartphone, Target,
+  HelpCircle, Mail, Menu, Pencil, Plus, ReceiptText, Search, Settings2, Smartphone, Target,
   TrendingUp, Trash2, X,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BudgetAllocations } from "@/components/budget-allocations";
 import { DestructiveActionDialog, UndoToast } from "@/components/destructive-action";
+import { HelpGuide } from "@/components/help-guide";
 import { currencyUnit } from "@/lib/currencies";
 import { currencySymbol, formatCurrency, formatDate, formatRelativeDueDate, maskedAmount, setDisplayFxRate, toBaseAmount, toDisplayAmount } from "@/lib/format";
 import type { BillItem, Category, DashboardData, HealthStatus, Member, PaymentMethod, TransactionItem } from "@/lib/types";
@@ -534,6 +535,20 @@ export function BudgetDashboard({ initialData, sessionEmail, initialPrivacy = fa
   const pay = async (bill: BillItem) => { setPaying(bill.id); const response = await fetch(`/api/bills/${bill.id}/pay`, { method: "POST" }); setPaying(null); if (response.ok) { await refresh(); bumpTx(); setToast(`${bill.name} marked as paid.`); } };
   const logout = async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.reload(); };
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpFirstTime, setHelpFirstTime] = useState(false);
+  // First-time onboarding: auto-open the guide once per account (per device),
+  // so brand-new sign-ups always get walked through the app. Deferred to a
+  // timeout so we don't setState synchronously inside the effect.
+  useEffect(() => {
+    let seen = true;
+    try { seen = Boolean(localStorage.getItem(`bt-guide-v1-${sessionEmail}`)); } catch { seen = true; }
+    if (seen) return;
+    const timer = window.setTimeout(() => { setHelpFirstTime(true); setHelpOpen(true); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [sessionEmail]);
+  const openHelp = () => { setHelpFirstTime(false); setHelpOpen(true); };
+  const closeHelp = () => { setHelpOpen(false); try { localStorage.setItem(`bt-guide-v1-${sessionEmail}`, "1"); } catch {} };
   const title = navItems.find((item) => item.id === view)?.label ?? "Overview"; const StatusIcon = statusIcon[data.status];
   const trendCeiling = Math.max(1, ...data.trend.flatMap((point) => [point.income, point.expense]));
   const nextBill = data.bills[0];
@@ -543,6 +558,7 @@ export function BudgetDashboard({ initialData, sessionEmail, initialPrivacy = fa
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-top"><span className="brand-lockup"><span className="brand-mark-anim"><img className="brand-mark-img" src="/brand-emblem.png" alt="" /><span className="brand-mark-sheen" aria-hidden="true" /></span><span className="brand-wordmark">Budget <span>Tracker</span></span></span><button className="icon-button sidebar-close" onClick={() => setSidebarOpen(false)} title="Close menu"><X size={19} /></button></div>
         <nav>{navItems.map(({ id, label, icon: Icon }) => <button key={id} className={view === id ? "active" : ""} onClick={() => { setView(id); setSidebarOpen(false); }}><Icon size={18} /><span>{label}</span>{view === id && <motion.i layoutId="nav-active" />}</button>)}</nav>
+        <button className="sidebar-help" onClick={openHelp}><HelpCircle size={18} /><span>Help &amp; guide</span></button>
         <button className="primary-button sidebar-add" onClick={openAddTransaction}><Plus size={17} /><span>Add transaction</span></button>
         <div className="sidebar-bottom">
           <AnimatePresence>
@@ -567,7 +583,7 @@ export function BudgetDashboard({ initialData, sessionEmail, initialPrivacy = fa
       {sidebarOpen && <button className="sidebar-overlay" aria-label="Close navigation" onClick={() => setSidebarOpen(false)} />}
 
       <main className="main-content">
-        <header className="topbar"><div className="topbar-title"><button className="icon-button menu-button" onClick={() => setSidebarOpen(true)} title="Open menu"><Menu size={20} /></button><div><p>{formatDate(new Date(), { weekday: "long", month: "long", day: "numeric", year: undefined })}</p><h1>{title}</h1></div></div><div className="topbar-actions"><span className="sync-indicator"><i />Synced {formatDate(data.generatedAt, { hour: "numeric", minute: "2-digit", month: undefined, day: undefined, year: undefined })}</span><button className="secondary-button" onClick={() => setModal("bill")}><BellRing size={16} /><span>Add bill</span></button><button className="primary-button" onClick={openAddTransaction}><Plus size={17} /><span>Add transaction</span></button></div></header>
+        <header className="topbar"><div className="topbar-title"><button className="icon-button menu-button" onClick={() => setSidebarOpen(true)} title="Open menu"><Menu size={20} /></button><div><p>{formatDate(new Date(), { weekday: "long", month: "long", day: "numeric", year: undefined })}</p><h1>{title}</h1></div></div><div className="topbar-actions"><button className="icon-button help-button" onClick={openHelp} title="Help & guide" aria-label="Help & guide"><HelpCircle size={18} /></button><span className="sync-indicator"><i />Synced {formatDate(data.generatedAt, { hour: "numeric", minute: "2-digit", month: undefined, day: undefined, year: undefined })}</span><button className="secondary-button" onClick={() => setModal("bill")}><BellRing size={16} /><span>Add bill</span></button><button className="primary-button" onClick={openAddTransaction}><Plus size={17} /><span>Add transaction</span></button></div></header>
 
         <div className="content-wrap">
           {view === "overview" && <div className="overview-v2">
@@ -651,6 +667,7 @@ export function BudgetDashboard({ initialData, sessionEmail, initialPrivacy = fa
         onConfirm={deleteTransaction}
       />
       {undoTx && <UndoToast message="Transaction deleted." onUndo={undoDelete} />}
+      <HelpGuide open={helpOpen} isFirstTime={helpFirstTime} onClose={closeHelp} />
       <AnimatePresence>
         {!undoTx && toast && <motion.div className="toast" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}><Check size={17} />{toast}</motion.div>}
       </AnimatePresence>

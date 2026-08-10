@@ -1465,3 +1465,28 @@ html[data-theme="dark"] .savings-reverse-impact { background: #121915; border-co
 @media (prefers-reduced-motion: reduce) {
   .balance-stage::after, .stage-ambient i:first-child, .stage-ambient span, .stage-status > i { animation: none; }
 }
+
+/* Help & onboarding guide */
+.help-sheet { width: min(560px, 96vw); max-height: 88vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.help-head { display: flex; align-items: center; gap: 14px; padding: 22px 24px 16px; border-bottom: 1px solid var(--line); }
+.help-head .eyebrow { margin: 0 0 2px; }
+.help-head h2 { margin: 0; font-size: 20px; }
+.help-head .icon-button { margin-left: auto; }
+.help-head-icon { width: 40px; height: 40px; flex: none; border-radius: 11px; display: grid; place-items: center; background: var(--accent-soft, rgba(18, 162, 102, .12)); color: var(--green-deep); }
+.help-body { padding: 18px 24px; overflow-y: auto; }
+.help-intro { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 16px; font-size: 14px; line-height: 1.6; color: var(--muted); }
+.help-intro svg { flex: none; margin-top: 2px; color: var(--green-deep); }
+.help-grid { display: grid; gap: 10px; }
+.help-feature { display: flex; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.help-feature-icon { width: 34px; height: 34px; flex: none; border-radius: 9px; display: grid; place-items: center; background: var(--accent-soft, rgba(18, 162, 102, .12)); color: var(--green-deep); }
+.help-feature strong { display: block; font-size: 14px; color: var(--ink); margin-bottom: 2px; }
+.help-feature p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--muted); }
+.help-note { margin: 16px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--muted); }
+.help-foot { padding: 14px 24px 20px; border-top: 1px solid var(--line); }
+.help-foot .primary-button { width: 100%; }
+.sidebar-help { width: 100%; margin-top: 6px; padding: 0 12px; height: 40px; display: flex; align-items: center; gap: 12px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font-size: 13px; font-weight: 540; cursor: pointer; text-align: left; }
+.sidebar-help:hover { background: #eef1ed; color: var(--ink); }
+.help-button { color: var(--muted); }
+.help-button:hover { color: var(--green-deep); }
+html[data-theme="dark"] .help-feature { background: #141b16; border-color: var(--hairline); }
+html[data-theme="dark"] .sidebar-help:hover { background: #1a231d; color: var(--ink); }
