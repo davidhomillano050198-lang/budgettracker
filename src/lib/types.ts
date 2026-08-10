@@ -24,6 +24,7 @@ export type MemberBudgetRole = "owner" | "planner" | "contributor" | "dependent"
 export type Member = MemberIdentity & {
   relationship: MemberRelationship;
   budgetRole: MemberBudgetRole;
+  occupation?: string;
   email: string;
   monthlyContribution: number;
   transactionCount: number;
@@ -116,6 +117,7 @@ export type SavingsActivity = {
 export type DashboardData = {
   householdName: string;
   avatar?: string | null;
+  onboarded: boolean;
   currency: string;
   baseCurrency: string;
   /** Live multiplier from baseCurrency to currency (1 when identical). */

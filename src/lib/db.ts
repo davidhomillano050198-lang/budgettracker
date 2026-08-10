@@ -367,6 +367,9 @@ async function initializeDatabase(): Promise<DbClient> {
   await db.exec("ALTER TABLE household_settings ADD COLUMN IF NOT EXISTS base_currency TEXT NOT NULL DEFAULT 'PHP';");
   await db.exec("ALTER TABLE household_settings ADD COLUMN IF NOT EXISTS savings_goal NUMERIC(14,2) NOT NULL DEFAULT 0;");
   await db.exec("ALTER TABLE household_settings ADD COLUMN IF NOT EXISTS avatar TEXT;");
+  // Onboarding gate. Defaults TRUE so existing households skip the setup wizard;
+  // createHousehold sets it FALSE for new sign-ups so they get guided setup first.
+  await db.exec("ALTER TABLE household_settings ADD COLUMN IF NOT EXISTS onboarded BOOLEAN NOT NULL DEFAULT TRUE;");
   await db.exec("ALTER TABLE categories ADD COLUMN IF NOT EXISTS budget_limit NUMERIC(14,2);");
   await db.exec("ALTER TABLE credentials ADD COLUMN IF NOT EXISTS password_set BOOLEAN NOT NULL DEFAULT TRUE;");
   await db.exec("ALTER TABLE member_profiles ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE;");
@@ -374,6 +377,7 @@ async function initializeDatabase(): Promise<DbClient> {
   await db.exec("ALTER TABLE member_profiles ADD COLUMN IF NOT EXISTS budget_role TEXT NOT NULL DEFAULT 'contributor';");
   await db.exec("ALTER TABLE member_profiles ADD COLUMN IF NOT EXISTS email TEXT;");
   await db.exec("ALTER TABLE member_profiles ADD COLUMN IF NOT EXISTS monthly_contribution NUMERIC(14,2) NOT NULL DEFAULT 0;");
+  await db.exec("ALTER TABLE member_profiles ADD COLUMN IF NOT EXISTS occupation TEXT;");
   await db.exec("CREATE INDEX IF NOT EXISTS transactions_active_household_date_idx ON transactions(household_id, occurred_at DESC) WHERE deleted_at IS NULL;");
   await db.exec("CREATE INDEX IF NOT EXISTS transactions_active_household_member_date_idx ON transactions(household_id, member_id, occurred_at DESC) WHERE deleted_at IS NULL;");
   await db.exec("CREATE INDEX IF NOT EXISTS transactions_active_household_type_date_idx ON transactions(household_id, type, occurred_at DESC) WHERE deleted_at IS NULL;");
@@ -406,9 +410,9 @@ export async function getDashboardData(householdId: string, memberId?: string): 
   const scope = [householdId, memberId ?? null];
 
   const settingsPromise = db.query<{
-    name: string; monthly_budget: string; currency: string; reminder_email: string; country: string; base_currency: string; savings_goal: string; avatar: string | null;
+    name: string; monthly_budget: string; currency: string; reminder_email: string; country: string; base_currency: string; savings_goal: string; avatar: string | null; onboarded: boolean;
   }>(
-    `SELECT h.name, s.monthly_budget, s.currency, s.reminder_email, s.country, s.base_currency, s.savings_goal, s.avatar
+    `SELECT h.name, s.monthly_budget, s.currency, s.reminder_email, s.country, s.base_currency, s.savings_goal, s.avatar, s.onboarded
      FROM households h JOIN household_settings s ON s.household_id = h.id WHERE h.id = $1`,
     [householdId],
   );
@@ -469,11 +473,11 @@ export async function getDashboardData(householdId: string, memberId?: string): 
   );
   const memberListPromise = db.query<{
     id: string; name: string; initials: string; color: string;
-    relationship: MemberRelationship; budget_role: MemberBudgetRole; email: string | null;
+    relationship: MemberRelationship; budget_role: MemberBudgetRole; email: string | null; occupation: string | null;
     monthly_contribution: string; transaction_count: number; active_bill_count: number;
     month_income: string; month_expense: string;
   }>(
-    `SELECT m.id, m.name, m.initials, m.color, m.relationship, m.budget_role, m.email, m.monthly_contribution,
+    `SELECT m.id, m.name, m.initials, m.color, m.relationship, m.budget_role, m.email, m.occupation, m.monthly_contribution,
        (SELECT COUNT(*)::int FROM transactions t WHERE t.member_id = m.id AND t.deleted_at IS NULL) AS transaction_count,
        (SELECT COUNT(*)::int FROM bills b WHERE b.member_id = m.id AND b.status <> 'paid') AS active_bill_count,
        (SELECT COALESCE(SUM(t.amount), 0) FROM transactions t
@@ -552,6 +556,7 @@ export async function getDashboardData(householdId: string, memberId?: string): 
   return {
     householdName: settings.rows[0].name,
     avatar: settings.rows[0].avatar ?? null,
+    onboarded: settings.rows[0].onboarded ?? true,
     currency: displayCurrency,
     baseCurrency,
     fxRate,
@@ -618,6 +623,7 @@ export async function getDashboardData(householdId: string, memberId?: string): 
       relationship: row.relationship,
       budgetRole: row.budget_role,
       email: row.email ?? "",
+      occupation: row.occupation ?? "",
       monthlyContribution: Number(row.monthly_contribution),
       transactionCount: Number(row.transaction_count),
       activeBillCount: Number(row.active_bill_count),
@@ -1115,7 +1121,7 @@ export async function createHousehold(input: {
       [crypto.randomUUID(), householdId, email, passwordHash, passwordSet],
     );
     await tx.query(
-      "INSERT INTO household_settings (household_id, monthly_budget, reminder_email) VALUES ($1, $2, $3)",
+      "INSERT INTO household_settings (household_id, monthly_budget, reminder_email, onboarded) VALUES ($1, $2, $3, FALSE)",
       [householdId, 50000, email],
     );
     const members: Array<[string, string, string, string, string]> = [
@@ -1136,6 +1142,53 @@ export async function createHousehold(input: {
     }
   });
   return householdId;
+}
+
+/**
+ * Finish first-run setup for a new household in one transaction: the owner's
+ * name + occupation, an optional partner, the household name, country/currency
+ * (stored natively as the base currency so amounts need no conversion), monthly
+ * budget, opening savings balance + goal, and reminder email — then flip
+ * `onboarded` TRUE so the setup wizard never shows again.
+ */
+export async function completeOnboarding(householdId: string, input: {
+  firstName: string; lastName: string; occupation?: string;
+  householdName: string; country: string; currency: string;
+  monthlyBudget: number; currentSavings?: number; savingsGoal?: number; reminderEmail?: string;
+  partner?: { firstName: string; lastName: string; occupation?: string };
+}): Promise<void> {
+  const db = await getDb();
+  const initials = (a: string, b: string) => `${a.trim()[0] ?? ""}${b.trim()[0] ?? ""}`.toUpperCase() || "BT";
+  const selfName = `${input.firstName.trim()} ${input.lastName.trim()}`.trim();
+  await db.transaction(async (tx) => {
+    await tx.query("UPDATE households SET name = $1 WHERE id = $2", [input.householdName.trim(), householdId]);
+    // The signup seed created a 'self' member and a 'partner' member; personalise them.
+    await tx.query(
+      "UPDATE member_profiles SET name = $1, initials = $2, occupation = $3 WHERE household_id = $4 AND relationship = 'self'",
+      [selfName, initials(input.firstName, input.lastName), input.occupation?.trim() || null, householdId],
+    );
+    if (input.partner) {
+      const partnerName = `${input.partner.firstName.trim()} ${input.partner.lastName.trim()}`.trim();
+      await tx.query(
+        "UPDATE member_profiles SET name = $1, initials = $2, occupation = $3, active = TRUE WHERE household_id = $4 AND relationship = 'partner'",
+        [partnerName, initials(input.partner.firstName, input.partner.lastName), input.partner.occupation?.trim() || null, householdId],
+      );
+    } else {
+      await tx.query("UPDATE member_profiles SET active = FALSE WHERE household_id = $1 AND relationship = 'partner'", [householdId]);
+    }
+    await tx.query(
+      `UPDATE household_settings SET base_currency = $1, currency = $1, country = $2, monthly_budget = $3,
+         savings_goal = $4, reminder_email = COALESCE($5, reminder_email), onboarded = TRUE
+       WHERE household_id = $6`,
+      [input.currency, input.country, input.monthlyBudget, input.savingsGoal ?? 0, input.reminderEmail ?? null, householdId],
+    );
+    if (input.currentSavings && input.currentSavings > 0) {
+      await tx.query(
+        "INSERT INTO savings_entries (id, household_id, kind, amount, note) VALUES ($1, $2, 'deposit', $3, $4)",
+        [crypto.randomUUID(), householdId, input.currentSavings, "Opening balance"],
+      );
+    }
+  });
 }
 
 /**

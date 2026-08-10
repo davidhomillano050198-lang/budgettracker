@@ -1490,3 +1490,45 @@ html[data-theme="dark"] .savings-reverse-impact { background: #121915; border-co
 .help-button:hover { color: var(--green-deep); }
 html[data-theme="dark"] .help-feature { background: #141b16; border-color: var(--hairline); }
 html[data-theme="dark"] .sidebar-help:hover { background: #1a231d; color: var(--ink); }
+
+/* Onboarding wizard */
+.onboarding-shell { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 20px; overflow-y: auto; background: radial-gradient(1200px 600px at 50% -10%, rgba(18, 162, 102, .10), transparent 60%), var(--canvas, #f4f6f2); }
+.onboarding-card { width: min(600px, 100%); display: flex; flex-direction: column; max-height: min(92vh, 800px); overflow: hidden; background: #fff; border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 24px 70px -30px rgba(11, 42, 29, .4); }
+.onboarding-progress { display: flex; gap: 6px; padding: 16px 22px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.onboarding-step { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.onboarding-step:not(:last-child)::after { content: ""; width: 14px; height: 1px; background: var(--line); margin-left: 4px; }
+.onboarding-step-dot { width: 22px; height: 22px; flex: none; border-radius: 50%; display: grid; place-items: center; background: #eef1ed; color: var(--muted); font-size: 11px; font-weight: 700; }
+.onboarding-step.current { color: var(--ink); font-weight: 600; }
+.onboarding-step.current .onboarding-step-dot { background: var(--green); color: #fff; }
+.onboarding-step.done .onboarding-step-dot { background: var(--green-deep); color: #fff; }
+.onboarding-body { padding: 26px 28px; overflow-y: auto; }
+.onboarding-hero { text-align: center; padding: 18px 8px; }
+.onboarding-hero-icon { width: 60px; height: 60px; margin: 0 auto 16px; border-radius: 18px; display: grid; place-items: center; background: var(--accent-soft, rgba(18, 162, 102, .12)); color: var(--green-deep); }
+.onboarding-hero h1 { margin: 0 0 10px; font-size: 26px; }
+.onboarding-hero p { margin: 0 auto; max-width: 450px; color: var(--muted); font-size: 15px; line-height: 1.6; }
+.onboarding-form { display: grid; gap: 14px; }
+.onboarding-title { display: flex; align-items: center; gap: 9px; color: var(--green-deep); }
+.onboarding-title h2 { margin: 0; font-size: 19px; color: var(--ink); }
+.onboarding-form label { display: grid; gap: 6px; font-size: 13px; font-weight: 600; color: var(--ink); }
+.onboarding-form label small { color: var(--muted); font-weight: 500; }
+.onboarding-form label > input, .onboarding-form label > select { height: 44px; padding: 0 13px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); font-size: 14px; }
+.onboarding-form label > input:focus, .onboarding-form label > select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(18, 162, 102, .14); }
+.onboarding-currency { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 11px; background: var(--accent-soft, rgba(18, 162, 102, .1)); font-size: 13px; line-height: 1.5; color: var(--ink); }
+.onboarding-toggle { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; text-align: left; color: var(--green-deep); }
+.onboarding-toggle > span { display: grid; gap: 2px; flex: 1; }
+.onboarding-toggle strong { font-size: 14px; color: var(--ink); }
+.onboarding-toggle small { font-size: 12px; color: var(--muted); font-weight: 500; }
+.onboarding-switch { width: 40px; height: 23px; flex: none; border-radius: 999px; background: #d7ddd7; position: relative; transition: background .2s; }
+.onboarding-switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 17px; height: 17px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.onboarding-toggle.on .onboarding-switch { background: var(--green); }
+.onboarding-toggle.on .onboarding-switch::after { transform: translateX(17px); }
+.onboarding-partner { display: grid; gap: 14px; }
+.onboarding-tour { max-height: 46vh; overflow-y: auto; margin-top: 4px; padding-right: 4px; }
+.onboarding-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 24px; border-top: 1px solid var(--line); }
+.onboarding-foot .primary-button, .onboarding-foot .secondary-button { display: inline-flex; align-items: center; gap: 8px; }
+.help-steps { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 3px; }
+.help-steps li { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+html[data-theme="dark"] .onboarding-card { background: #141b16; border-color: var(--hairline); }
+html[data-theme="dark"] .onboarding-form label > input, html[data-theme="dark"] .onboarding-form label > select { background: #0f1512; border-color: #2b362f; }
+html[data-theme="dark"] .onboarding-toggle { background: #0f1512; border-color: #2b362f; }
+html[data-theme="dark"] .onboarding-step-dot { background: #1c2620; }
