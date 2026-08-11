@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
+    "@vercel/analytics": "^2.0.1",
     "bcryptjs": "^3.0.3",
     "date-fns": "^4.4.0",
     "jose": "^6.2.3",
