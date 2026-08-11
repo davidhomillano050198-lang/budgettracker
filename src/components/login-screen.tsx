@@ -39,14 +39,14 @@ const providerMarks: Record<string, () => React.ReactNode> = {
   facebook: FacebookMark,
 };
 
-export function LoginScreen({ demoMode, providers = [], authError }: {
-  demoMode: boolean; providers?: LoginProvider[]; authError?: string;
+export function LoginScreen({ demoMode, providers = [], authError, initialMode = "signin" }: {
+  demoMode: boolean; providers?: LoginProvider[]; authError?: string; initialMode?: "signin" | "signup";
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(authError ? (authErrorCopy[authError] ?? "Sign-in failed. Please try again.") : "");
 
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup">(initialMode);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -67,7 +67,7 @@ export function LoginScreen({ demoMode, providers = [], authError }: {
       setPending(false);
       return;
     }
-    window.location.reload();
+    window.location.href = "/";
   }
 
   return (

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,8 +15,27 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BudgetTracker | Household finance",
-  description: "A private household workspace for budgets, spending, income, and bill reminders.",
+  metadataBase: new URL("https://budgettracker-five-zeta.vercel.app"),
+  title: {
+    default: "Budget Tracker — budgeting for couples & families",
+    template: "%s · Budget Tracker",
+  },
+  description: "The private budgeting app for couples and families. Track income and spending, plan budgets, split by person, and never miss a bill. Free forever plan — no credit card.",
+  keywords: ["budgeting app", "couples budget", "family budget", "household finance", "expense tracker", "bill reminders", "savings tracker"],
+  openGraph: {
+    title: "Budget Tracker — budgeting for couples & families",
+    description: "Track spending, plan budgets, split by person, and never miss a bill — in one private space you and your partner share. Free forever plan.",
+    url: "/",
+    siteName: "Budget Tracker",
+    type: "website",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Budget Tracker — budgeting for couples & families" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Budget Tracker — budgeting for couples & families",
+    description: "The private budgeting app for couples and families. Free forever plan.",
+    images: ["/og.png"],
+  },
   icons: {
     icon: [
       { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
@@ -54,7 +74,7 @@ export default function RootLayout({
       <head>
         <Script id="theme-init" strategy="beforeInteractive">{themeInitScript}</Script>
       </head>
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>{children}<Analytics /></body>
     </html>
   );
 }
