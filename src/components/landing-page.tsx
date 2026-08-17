@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   BellRing, Check, LayoutDashboard, LineChart, Lock, PiggyBank, ReceiptText,
   ShieldCheck, Sparkles, Target, Users, Wallet,
@@ -112,7 +113,7 @@ export function LandingPage() {
       <footer className="lp-footer">
         <span className="lp-brand"><img src="/brand-emblem.png" alt="" className="lp-brand-mark" /><span>Budget <b>Tracker</b></span></span>
         <span className="lp-footer-tag"><Lock size={13} /> Private household finance</span>
-        <nav className="lp-footer-links"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/login">Sign in</a></nav>
+        <nav className="lp-footer-links"><Link href="/blog">Blog</Link><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/login">Sign in</a></nav>
       </footer>
     </div>
   );
