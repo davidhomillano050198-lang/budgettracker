@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     images: ["/og.png"],
   },
   verification: {
-    google: "ne6KGog_PWIgV35",
+    google: "ne6KGog_PWIgV35xQLXxgLIPBXtV60AbYFmZ0kHRTWM",
   },
   icons: {
     icon: [
