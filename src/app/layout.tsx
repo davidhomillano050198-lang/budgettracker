@@ -36,6 +36,9 @@ export const metadata: Metadata = {
     description: "The private budgeting app for couples and families. Free forever plan.",
     images: ["/og.png"],
   },
+  verification: {
+    google: "ne6KGog_PWIgV35",
+  },
   icons: {
     icon: [
       { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
