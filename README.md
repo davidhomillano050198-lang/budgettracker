@@ -34,17 +34,3 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-## AI category suggestions (OmniRoute)
-
-The transaction form can suggest a category from the comment you type. Requests go through
-[OmniRoute](https://github.com/diegosouzapw/OmniRoute), a self-hosted, OpenAI-compatible AI gateway.
-The feature stays hidden until all three variables are set (in `.env.local` locally, or in your Vercel project settings):
-
-```bash
-OMNIROUTE_BASE_URL=https://your-omniroute-host/v1   # must be reachable from the server (not localhost on Vercel)
-OMNIROUTE_API_KEY=...                               # API key created in the OmniRoute dashboard
-OMNIROUTE_MODEL=...                                 # model or combo name configured in OmniRoute
-```
-
-The server calls `POST {OMNIROUTE_BASE_URL}/chat/completions`, and the browser never sees the key.
