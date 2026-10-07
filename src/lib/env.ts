@@ -33,6 +33,10 @@ export function validateEnv(): void {
     warnings.push("CRON_SECRET is unset — the reminder cron endpoint is unprotected/disabled.");
   }
 
+  if (!process.env.OMNIROUTE_BASE_URL || !process.env.OMNIROUTE_API_KEY || !process.env.OMNIROUTE_MODEL) {
+    warnings.push("OMNIROUTE_BASE_URL / OMNIROUTE_API_KEY / OMNIROUTE_MODEL not all set — AI category suggestions are disabled.");
+  }
+
   for (const w of warnings) console.warn(`[env] WARNING: ${w}`);
   if (errors.length) {
     for (const e of errors) console.error(`[env] FATAL: ${e}`);
