@@ -85,7 +85,7 @@ Replace `SOURCE` with `facebook`, `tiktok`, or `instagram` so we can see which p
 |---|---|
 | **Name** (max 30) | `Budget Tracker PH` |
 | **Username** | `budgettrackerph` |
-| **Bio** (max 80) | `Budgeting for two, walang away sa pera 💚` ↵ `Free app para sa couples 👇` |
+| **Bio** (max 80) | Line 1: `Budgeting for two, walang away sa pera 💚` — press **Enter** — Line 2: `Free app para sa couples 👇` |
 
 ---
 
