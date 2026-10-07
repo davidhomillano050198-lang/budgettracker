@@ -188,3 +188,22 @@
 - [ ] Design carousel (FB 2) and the challenge graphic (FB 3). Canva works well
 - [ ] Reply to **every** comment within 2 hours (the algorithm rewards this)
 - [ ] Sunday night: send me the views, likes, comments, and link clicks per post and I'll plan Week 2 around the winners
+
+---
+
+## Produced assets (`marketing/week-01-assets/`)
+Recorded from a demo household (fictional couple "Migo & Ana Santos") in a local copy of the app.
+
+| File | Use |
+|---|---|
+| `fb2-carousel-slide-1..6.png` | FB 2 carousel (1080×1350) |
+| `fb3-kinsenas-challenge.png` | FB 3 #KinsenasChallenge (1080×1350) |
+| `video-end-card.png` | End card for every TikTok/Reel (1080×1920) |
+| `clip-01-overview-filter-by-person.mp4` | TikTok #1 |
+| `clip-02-bills-and-reminders.mp4` | TikTok #2 |
+| `clip-03-envelope-budgets.mp4` | TikTok #3 and #6 |
+| `clip-04-kinsenas-log-sahod.mp4` | TikTok #4 |
+| `clip-05-milk-tea-almost-there.mp4` | TikTok #5 |
+| `clip-07-savings-goal.mp4` | TikTok #7 |
+
+The `.mp4` clips are git-ignored to keep the repo small; they were delivered directly in the Claude session.

@@ -50,3 +50,6 @@ devserver.err.log
 
 .vercel
 .env*
+
+# Marketing video exports (large binaries; shared outside git)
+marketing/**/*.mp4
