@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import {
   ArrowDownLeft, ArrowRight, ArrowUpRight, Banknote, BellRing, CalendarDays, Check, ChevronDown, ChevronRight, ChevronUp,
   CircleDollarSign, Clock3, CreditCard, Download, Gauge, Landmark, LayoutDashboard, LogOut,
-  HelpCircle, Mail, Menu, Pencil, Plus, ReceiptText, Search, Settings2, Smartphone, Target,
+  HelpCircle, Mail, Menu, Pencil, Plus, ReceiptText, Search, Settings2, Smartphone, Sparkles, Target,
   TrendingUp, Trash2, X,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -177,6 +177,23 @@ function TransactionModal({ data, editing, onClose, onSaved }: { data: Dashboard
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const switchType = (next: "expense" | "income") => { setType(next); setCategoryId(data.categories.find((category) => category.kind === next)?.id ?? ""); };
+  const noteRef = useRef<HTMLTextAreaElement>(null);
+  const [suggesting, setSuggesting] = useState(false);
+
+  async function suggest() {
+    const note = noteRef.current?.value.trim() ?? "";
+    if (note.length < 2) { setError("Add a comment first so we can suggest a category."); noteRef.current?.focus(); return; }
+    setSuggesting(true); setError("");
+    const response = await fetch("/api/ai/suggest-category", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, note, categories: available.map(({ id, name }) => ({ id, name })) }),
+    }).catch(() => null);
+    const result = await response?.json().catch(() => null);
+    setSuggesting(false);
+    if (!response?.ok) { setError(result?.error ?? "AI suggestion is unavailable right now."); return; }
+    if (result?.categoryId && available.some((category) => category.id === result.categoryId)) setCategoryId(result.categoryId);
+    else setError("No confident suggestion — pick a category manually.");
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setPending(true); setError("");
@@ -200,10 +217,10 @@ function TransactionModal({ data, editing, onClose, onSaved }: { data: Dashboard
       <form onSubmit={submit} className="modal-form">
         <div className="segmented-control"><button type="button" className={type === "expense" ? "active" : ""} onClick={() => switchType("expense")}><ArrowUpRight size={16} />Expense</button><button type="button" className={type === "income" ? "active" : ""} onClick={() => switchType("income")}><ArrowDownLeft size={16} />Income</button></div>
         <label className="amount-input"><span>Amount</span><div><b>{currencySymbol(data.currency)}</b><input name="amount" type="number" min="0.01" step="0.01" placeholder="0.00" defaultValue={editing ? toDisplayAmount(editing.amount) : undefined} autoFocus required /></div></label>
-        <fieldset><legend>Category</legend><CategoryPicker categories={available} value={categoryId} onChange={setCategoryId} /></fieldset>
+        <fieldset><legend className="legend-with-action">Category{data.aiSuggestions && <button type="button" className="suggest-button" onClick={suggest} disabled={suggesting}><Sparkles size={13} />{suggesting ? "Suggesting..." : "Suggest from comment"}</button>}</legend><CategoryPicker categories={available} value={categoryId} onChange={setCategoryId} /></fieldset>
         <fieldset><legend>Paid with</legend><div className="method-picker">{paymentMethods.map(({ id, label, icon: Icon }) => <button type="button" key={id} className={method === id ? "selected" : ""} onClick={() => setMethod(id)}><Icon size={15} />{label}</button>)}</div></fieldset>
         <div className="form-grid"><label><span>{type === "expense" ? "Spent by" : "Received by"}</span><select name="memberId" defaultValue={editing?.member.id ?? data.members[0]?.id}>{data.members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}</select></label><label><span>Date & time</span><input name="occurredAt" type="datetime-local" defaultValue={defaultDate} required /></label></div>
-        <label><span>Comment</span><textarea name="note" placeholder={type === "expense" ? "What was this for?" : "Where did this come from?"} defaultValue={editing?.note} maxLength={280} required /></label>
+        <label><span>Comment</span><textarea ref={noteRef} name="note" placeholder={type === "expense" ? "What was this for?" : "Where did this come from?"} defaultValue={editing?.note} maxLength={280} required /></label>
         {error && <p className="form-error">{error}</p>}
         <button className="primary-button modal-submit" disabled={pending}><span>{pending ? "Saving..." : isEdit ? "Save changes" : `Add ${type}`}</span><ArrowRight size={17} /></button>
       </form>
