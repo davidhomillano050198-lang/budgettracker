@@ -123,8 +123,6 @@ export type DashboardData = {
   /** Live multiplier from baseCurrency to currency (1 when identical). */
   fxRate: number;
   fxUpdatedAt: string | null;
-  /** True when an OmniRoute AI gateway is configured for category suggestions. */
-  aiSuggestions?: boolean;
   country: string;
   reminderEmail: string;
   monthlyBudget: number;
