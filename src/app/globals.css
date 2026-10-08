@@ -1582,6 +1582,12 @@ html[data-theme="dark"] .onboarding-step-dot { background: #1c2620; }
 .lp-plan li { display: flex; align-items: center; gap: 9px; font-size: 14px; color: var(--ink); }
 .lp-plan li svg { color: var(--green-deep); flex: none; }
 .lp-plan .lp-cta { justify-content: center; }
+.lp-plan-trial { margin: -4px 0 14px; color: var(--green-deep); font-size: 13px; font-weight: 650; }
+.lp-waitlist { margin-top: auto; display: grid; gap: 8px; }
+.lp-waitlist input { width: 100%; padding: 11px 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); font: inherit; font-size: 14px; }
+.lp-waitlist input:focus { outline: 2px solid var(--green); outline-offset: 1px; }
+.lp-waitlist-error { color: #b4674d; font-size: 13px; }
+.lp-waitlist-done { margin-top: auto; display: flex; align-items: center; gap: 8px; color: var(--green-deep); font-size: 14px; font-weight: 650; }
 .lp-faqs { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; text-align: left; }
 .lp-faq { padding: 20px; border-radius: 14px; background: #fff; border: 1px solid var(--line); }
 .lp-faq strong { display: block; margin-bottom: 6px; font-size: 15px; }
@@ -1622,3 +1628,4 @@ html[data-theme="dark"] .lp-feature, html[data-theme="dark"] .lp-step, html[data
 .blog-cta h3 { margin: 0 0 6px; font-size: 20px; }
 .blog-cta p { margin: 0 0 16px; color: var(--muted); font-size: 14px; }
 html[data-theme="dark"] .blog-card { background: #141b16; border-color: var(--hairline); }
+html[data-theme="dark"] .lp-waitlist input { background: #0f1512; border-color: var(--hairline); color: #e6ece8; }

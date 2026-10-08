@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { budgetSchema, signupSchema, transactionSchema, profileSchema } from "./validation";
+import { budgetSchema, signupSchema, transactionSchema, profileSchema, waitlistSchema } from "./validation";
 
 describe("budgetSchema", () => {
   it("accepts a valid budget and normalizes fields", () => {
@@ -94,5 +94,16 @@ describe("profileSchema", () => {
 
   it("rejects an empty member list", () => {
     expect(profileSchema.safeParse({ householdName: "Our Household", members: [] }).success).toBe(false);
+  });
+});
+
+describe("waitlistSchema", () => {
+  it("normalizes the email and defaults the source", () => {
+    expect(waitlistSchema.parse({ email: "  Ana@Example.COM " })).toEqual({ email: "ana@example.com", source: "landing" });
+  });
+
+  it("rejects an invalid email or unknown source", () => {
+    expect(waitlistSchema.safeParse({ email: "not-an-email" }).success).toBe(false);
+    expect(waitlistSchema.safeParse({ email: "a@b.co", source: "spam" }).success).toBe(false);
   });
 });
