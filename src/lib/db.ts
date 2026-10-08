@@ -579,7 +579,7 @@ export async function getDashboardData(householdId: string, memberId?: string): 
       note: row.note,
       createdAt: asIso(row.created_at),
     })),
-    spendingChange: previousExpense > 0 ? ((monthExpense - previousExpense) / previousExpense) * 100 : 0,
+    spendingChange: previousExpense > 0 ? ((monthExpense - previousExpense) / previousExpense) * 100 : null,
     forecast,
     safeToSpendDaily: Math.max(0, (monthlyBudget - monthExpense) / Math.max(1, daysInMonth - elapsed + 1)),
     status,

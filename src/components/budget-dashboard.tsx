@@ -556,7 +556,11 @@ export function BudgetDashboard({ initialData, sessionEmail, initialPrivacy = fa
   const nextBill = data.bills[0];
 
   if (!data.onboarded) {
-    return <OnboardingWizard sessionEmail={sessionEmail} onComplete={() => { refresh(); }} />;
+    return <OnboardingWizard sessionEmail={sessionEmail} onComplete={() => {
+      // The wizard ends with its own quick tour, so don't auto-open the guide again.
+      try { localStorage.setItem(`bt-guide-v1-${sessionEmail}`, "1"); } catch {}
+      refresh();
+    }} />;
   }
 
   return (
@@ -630,7 +634,7 @@ export function BudgetDashboard({ initialData, sessionEmail, initialPrivacy = fa
             </section>
 
             <section className="signal-strip">
-              <div><span><TrendingUp size={14} />Spent this month</span><strong>{formatCurrency(data.monthExpense, data.currency)}</strong><small className={data.spendingChange > 0 ? "signal-warn" : "signal-good"}>{data.spendingChange <= 0 ? "Down" : "Up"} {Math.abs(data.spendingChange).toFixed(1)}% from last month</small></div>
+              <div><span><TrendingUp size={14} />Spent this month</span><strong>{formatCurrency(data.monthExpense, data.currency)}</strong>{data.spendingChange === null ? <small>No spending last month to compare</small> : <small className={data.spendingChange > 0 ? "signal-warn" : "signal-good"}>{data.spendingChange <= 0 ? "Down" : "Up"} {Math.abs(data.spendingChange).toFixed(1)}% from last month</small>}</div>
               <div><span><CircleDollarSign size={14} />Net savings</span><strong>{formatCurrency(data.monthIncome - data.monthExpense, data.currency)}</strong><small>{data.savingsRate.toFixed(0)}% of income retained</small></div>
               <div><span><Gauge size={14} />Daily pace</span><strong>{formatCurrency(data.safeToSpendDaily, data.currency)}</strong><small>Safe to spend per day</small></div>
               <div><span><Target size={14} />Budget left</span><strong>{formatCurrency(data.budgetRemaining, data.currency)}</strong><small>{Math.max(0, 100 - data.utilization).toFixed(0)}% remains unspent</small></div>
