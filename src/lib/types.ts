@@ -135,7 +135,8 @@ export type DashboardData = {
   savingsBalance: number;
   savingsGoal: number;
   savingsActivity: SavingsActivity[];
-  spendingChange: number;
+  /** % change vs last month; null when last month had no spending to compare. */
+  spendingChange: number | null;
   forecast: number;
   safeToSpendDaily: number;
   status: HealthStatus;
