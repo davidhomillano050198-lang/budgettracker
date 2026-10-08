@@ -127,6 +127,11 @@ const schema = `
     reversed_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
+  CREATE TABLE IF NOT EXISTS premium_waitlist (
+    email TEXT PRIMARY KEY,
+    source TEXT NOT NULL DEFAULT 'landing',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
   CREATE INDEX IF NOT EXISTS transactions_household_date_idx ON transactions(household_id, occurred_at DESC);
   CREATE INDEX IF NOT EXISTS bills_household_due_idx ON bills(household_id, due_date);
   CREATE INDEX IF NOT EXISTS savings_entries_household_date_idx ON savings_entries(household_id, created_at DESC);
@@ -579,7 +584,7 @@ export async function getDashboardData(householdId: string, memberId?: string): 
       note: row.note,
       createdAt: asIso(row.created_at),
     })),
-    spendingChange: previousExpense > 0 ? ((monthExpense - previousExpense) / previousExpense) * 100 : 0,
+    spendingChange: previousExpense > 0 ? ((monthExpense - previousExpense) / previousExpense) * 100 : null,
     forecast,
     safeToSpendDaily: Math.max(0, (monthlyBudget - monthExpense) / Math.max(1, daysInMonth - elapsed + 1)),
     status,
@@ -1302,4 +1307,14 @@ export async function recordReminder(billId: string, reminderDay: number, sentTo
     "INSERT INTO reminder_logs (id, bill_id, reminder_day, sent_to) VALUES ($1,$2,$3,$4) ON CONFLICT (bill_id, reminder_day) DO NOTHING",
     [crypto.randomUUID(), billId, reminderDay, sentTo],
   );
+}
+
+/** Add an email to the Premium waitlist; "exists" when it was already on it. */
+export async function joinPremiumWaitlist(email: string, source: string): Promise<"added" | "exists"> {
+  const db = await getDb();
+  const result = await db.query<{ email: string }>(
+    "INSERT INTO premium_waitlist (email, source) VALUES ($1, $2) ON CONFLICT (email) DO NOTHING RETURNING email",
+    [email, source],
+  );
+  return result.rows.length ? "added" : "exists";
 }

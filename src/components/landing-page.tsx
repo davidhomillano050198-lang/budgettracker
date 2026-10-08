@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PremiumWaitlist } from "@/components/premium-waitlist";
 import {
   BellRing, Check, LayoutDashboard, LineChart, Lock, PiggyBank, ReceiptText,
   ShieldCheck, Sparkles, Target, Users, Wallet,
@@ -82,15 +83,16 @@ export function LandingPage() {
         <p className="lp-sub">Start free. Upgrade only if you want more.</p>
         <div className="lp-plans">
           <div className="lp-plan">
-            <div className="lp-plan-head"><span className="lp-plan-name"><Wallet size={18} /> Free</span><div className="lp-price"><b>$0</b><small>forever</small></div></div>
+            <div className="lp-plan-head"><span className="lp-plan-name"><Wallet size={18} /> Free</span><div className="lp-price"><b>₱0</b><small>forever</small></div></div>
             <ul>{FREE_PERKS.map((p) => <li key={p}><Check size={15} />{p}</li>)}</ul>
             <Cta href="/login?mode=signup">Get started free</Cta>
           </div>
           <div className="lp-plan lp-plan-featured">
             <span className="lp-plan-badge">Coming soon</span>
-            <div className="lp-plan-head"><span className="lp-plan-name"><LineChart size={18} /> Premium</span><div className="lp-price"><b>$4</b><small>/ month</small></div></div>
+            <div className="lp-plan-head"><span className="lp-plan-name"><LineChart size={18} /> Premium</span><div className="lp-price"><b>₱149</b><small>/ month</small></div></div>
+            <p className="lp-plan-trial">First month free when Premium launches.</p>
             <ul>{PREMIUM_PERKS.map((p) => <li key={p}><Check size={15} />{p}</li>)}</ul>
-            <Cta variant="ghost" href="/login?mode=signup">Start free, upgrade later</Cta>
+            <PremiumWaitlist />
           </div>
         </div>
       </section>
