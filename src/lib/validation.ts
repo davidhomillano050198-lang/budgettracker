@@ -126,3 +126,8 @@ export const onboardingSchema = z.object({
     occupation: z.string().trim().max(60).optional(),
   }).optional(),
 });
+
+export const waitlistSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Enter a valid email address").max(120),
+  source: z.enum(["landing", "app"]).default("landing"),
+});
