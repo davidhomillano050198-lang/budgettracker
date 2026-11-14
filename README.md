@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BudgetTracker
 
-## Getting Started
+A personal finance web app for tracking spending, bills and savings goals, with peso-first, multi-currency support.
 
-First, run the development server:
+**Live app:** https://budgettracker-five-zeta.vercel.app
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Features
+
+- **Accounts and auth:** email/password sign-up (bcrypt hashing, JWT sessions via `jose`) plus Google and Facebook OAuth sign-in, with rate-limited auth endpoints.
+- **Transactions and categories:** log income and expenses, categorise them, and filter by period.
+- **Dashboard and analytics:** spending breakdowns and trends charted with Recharts.
+- **Bills and reminders:** recurring bills, plus a daily Vercel Cron job that emails upcoming-bill reminders through Resend.
+- **Savings goals:** track progress toward targets.
+- **Multi-currency:** foreign-exchange conversion using live rates.
+- **Onboarding and settings:** a guided first run, user preferences and themes.
+- **Marketing site:** landing page, Premium waitlist, an SEO blog, sitemap/robots, and privacy and terms pages.
+- **Quality:** typed end to end with TypeScript and Zod validation, unit tests with Vitest, CI on GitHub Actions, and error monitoring hooks.
+
+## Tech stack
+
+| Area | Tools |
+|---|---|
+| Framework | Next.js 16 (App Router, Route Handlers), React 19 |
+| Language and validation | TypeScript, Zod |
+| Database | PostgreSQL (`pg`), PGlite for local development |
+| Auth | bcryptjs, jose (JWT), Google and Facebook OAuth |
+| Email and jobs | Resend, Vercel Cron |
+| UI | Tailwind CSS 4, Motion, Lucide icons, Recharts |
+| Testing and CI | Vitest, GitHub Actions |
+| Hosting | Vercel, Vercel Analytics |
+
+## Project structure
+
+```
+src/
+  app/
+    api/        REST route handlers: auth, transactions, categories, bills,
+                savings, dashboard, analytics, settings, onboarding, cron, waitlist
+    blog/       SEO blog
+    login/      Auth screens
+    privacy/, terms/
+  components/   UI components
+  lib/          auth, db, email, fx, oauth, rate-limit, validation (+ tests)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Getting started
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+cp .env.example .env.local   # fill in DB, JWT secret, OAuth and Resend keys
+npm run dev                  # http://localhost:3000
+npm test                     # run unit tests
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Author
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**David Homillano**, Full-Stack Developer (Java Spring Boot · React/Next.js · Supabase)
+[LinkedIn](https://www.linkedin.com/in/david-homillano-818a21349/)
